@@ -1,0 +1,8 @@
+this is a complete implementation of net-snmp perl subagent.
+
+it can be used to execute arbitrary commands and provide its results via snmp.
+
+3 functions provided to monitor ntp, httpd and core files ( see snmpd-poller ):
+monitorNtp, monitorHttpd, monitorCore
+
+see http://www.net-snmp.org/wiki/index.php/Tut:Extending_snmpd_using_perl for more information ...
