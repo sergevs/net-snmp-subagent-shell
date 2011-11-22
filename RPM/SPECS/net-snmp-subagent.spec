@@ -1,5 +1,5 @@
 Name:       net-snmp-subagent
-Version:    1.0.2.2
+Version: 1.1.0.0
 Release:    ssv1
 Summary:    Net SNMP subagent extends snmd mib
 License:    GPL
@@ -21,17 +21,18 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 %__rm -rf %buildroot
 cd snmpd-agent 
 %__mkdir_p %buildroot/etc/snmp/subagent/conf.d
+%__install common %buildroot/etc/snmp/subagent
 %__install snmpd-* %buildroot/etc/snmp/subagent
 %__install *.functions %buildroot/etc/snmp/subagent
-%__install functions*.conf %buildroot/etc/snmp/subagent
+%__install reload %buildroot/etc/snmp/subagent
 
 %files
 %attr(755,root,root) %dir /etc/snmp/subagent
 %attr(755,root,root) %dir /etc/snmp/subagent/conf.d
-%attr(-, root,root ) /etc/snmp/subagent/conf.d/*
+%attr(444,root,root) /etc/snmp/subagent/common
 %attr(744,root,root) /etc/snmp/subagent/snmpd-poller
 %attr(444,root,root) /etc/snmp/subagent/snmpd-poller-agent
-%attr(444,root,root) /etc/snmp/subagent/snmpd-poller-common
+%attr(744,root,root) /etc/snmp/subagent/reload
 %attr(444,root,root) /etc/snmp/subagent/*.functions
 %config(noreplace) %attr(444,root,root) /etc/snmp/subagent/*.conf
 

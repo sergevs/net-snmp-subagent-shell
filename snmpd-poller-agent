@@ -14,7 +14,7 @@ use File::Basename qw( fileparse );
 
 our $subAgentDir=( fileparse($0) )[1];
 
-require "${subAgentDir}snmpd-poller-common";
+require "${subAgentDir}common";
 
 our $agent;
 our $reg_oid;

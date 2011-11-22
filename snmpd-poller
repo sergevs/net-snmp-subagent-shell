@@ -14,7 +14,7 @@ use Sys::Syslog qw(:standard :macros);
 use File::Basename;
 
 our $subAgentDir=( fileparse($0) )[1];
-require "${subAgentDir}snmpd-poller-common";
+require "${subAgentDir}common";
 
 our @oDescr;
 our $shm_size;
@@ -29,7 +29,7 @@ $SIG{HUP}='readConfig';
   my $shm_message = ''; 
   my $shm_id = $ARGV[0];
   our $log_to_console = 1 if $shm_id eq 'debug';
-  logMessage(LOG_INFO, "Starting snmpd poller");
+  logMessage(LOG_INFO, "Starting snmpd-poller");
   readConfig(); 
 # init pollerInfo
   my $start_time=gettimeofday();
