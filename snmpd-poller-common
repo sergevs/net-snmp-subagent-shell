@@ -2,11 +2,35 @@ use warnings;
 use strict;
 
 use Sys::Syslog qw(:standard :macros);
+use Sys::Hostname;
 
 our $subAgentDir;
 our ($reg_oid, $poller_cycle, $stale_time, $log_to_console, $cmd_timeout, $shm_size);
 our @oDescr;
 return 1;
+
+sub unpackMessage {
+  my $msg=shift;
+  my $d=shift;
+  my @od=split /;/, $msg;
+  my $start_time=shift @od;
+  my $outdated=((gettimeofday()-$start_time)>$stale_time)?1:0;
+  foreach  (@od) {
+    last if length($_) == 0;
+    my @f=split /!/;
+    $d->{"$reg_oid.${f[0]}.2.1"}=$f[1];
+    $d->{"$reg_oid.${f[0]}.2.2"}=$f[2];
+    $d->{"$reg_oid.${f[0]}.2.3"}=($outdated)?'':$f[3];
+    for( my $i=4; $i<=$#f; $i++ ) {
+      if ( index($f[$i],'@') != -1 ) {
+        my ( $o,$v ) = split /@/, $f[$i];
+        $d->{"$reg_oid.${f[0]}.1.$o"}=($outdated)?'':$v;
+      } else {	
+        $d->{"$reg_oid.${f[0]}.1.@{[$i-3]}"}=($outdated)?'':$f[$i];
+      }
+    }
+  }
+}
 
 sub logMessage {
   my $level = shift;
@@ -14,11 +38,13 @@ sub logMessage {
   openlog( "snmpd-poller", 'pid', LOG_DAEMON );
   syslog ( $level, $msg );
   closelog;
-  print STDERR "$msg\n" if defined($log_to_console) && "$log_to_console" ne "0";
+  print STDERR "$msg\n" if defined($log_to_console) && $log_to_console != 0;
 }
 
 sub readConfig {
   logMessage(LOG_INFO, "Reading config ...");
+  @oDescr = ();
+# process the main configuration file
   open(CONFIG,"${subAgentDir}/snmpd-poller.conf") or die;
   while(<CONFIG>) {
     chomp;
@@ -38,10 +64,33 @@ sub readConfig {
       $cmd_timeout=$c[1];
     } elsif ($c[0] eq 'shm_size') {
       $shm_size=$c[1];
-    } elsif ($c[0] eq 'function') {
-      push @oDescr, [ split /,/, $c[1] ];
     } else {
       die "error <$c[0]>";  
     }
+  }
+  close CONFIG;
+# load extention functions
+  foreach my $ff ( glob "${subAgentDir}*.functions" ) {
+    logMessage(LOG_DEBUG, "loading functions from  $ff");
+    require "$ff";
+  }
+# process hostname based configuration files
+  my $h = hostname;
+  foreach my $f_config ( (glob "${subAgentDir}snmpd-poller-functions*.conf"), (glob "${subAgentDir}conf.d/${h}*.conf")) {
+    logMessage(LOG_DEBUG, "loading config from  $f_config");
+    open(S_CONFIG,"$f_config") or die;
+    while(<S_CONFIG>) {
+      chomp;
+      s/ //g;
+      next if ( /^(#|$)/ );
+      my @c=split /=/, $_, 2;
+      die "error $#c" if $#c != 1;
+      if ($c[0] eq 'function') { 
+        push @oDescr, [ split /,/, $c[1] ];
+      } else {
+        die "error <$c[0]>";  
+      }
+    }
+    close S_CONFIG;
   }
 }

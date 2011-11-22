@@ -1,0 +1,3 @@
+pkgName='net-snmp-subagent'
+specFile='net-snmp-subagent.spec'
+vcsModules[$vcsModule]=$modBuild

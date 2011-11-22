@@ -10,12 +10,11 @@ use Socket;
 use POSIX ":sys_wait_h";
 use Time::HiRes qw( gettimeofday );
 use Sys::Syslog qw(:standard :macros);
+use File::Basename qw( fileparse );
 
-#define here another subAgentDir 
-our $subAgentDir; #='/home/serge_sergeev/work/subagent' ;
-$subAgentDir='/etc/snmp/subagent' unless defined($subAgentDir);
+our $subAgentDir=( fileparse($0) )[1];
 
-require "${subAgentDir}/snmpd-poller-common";
+require "${subAgentDir}snmpd-poller-common";
 
 our $agent;
 our $reg_oid;
@@ -26,29 +25,6 @@ my $shm_id;
 
 sub pollerHandler {
   my ($handler, $registration_info, $request_info, $requests) = @_;
-
-  sub unpackMessage {
-    my $msg=shift;
-    my $d=shift;
-    my @od=split /;/, $msg;
-    my $start_time=shift @od;
-    my $outdated=((gettimeofday()-$start_time)>$stale_time)?1:0;
-    foreach  (@od) {
-      last if length($_) == 0;
-      my @f=split /!/;
-      $d->{"$reg_oid.${f[0]}.2.1"}=$f[1];
-      $d->{"$reg_oid.${f[0]}.2.2"}=$f[2];
-      $d->{"$reg_oid.${f[0]}.2.3"}=($outdated)?'':$f[3];
-      for( my $i=4; $i<=$#f; $i++ ) {
-        if ( index($f[$i],'@') != -1 ) {
-          my ( $o,$v ) = split /@/, $f[$i];
-          $d->{"$reg_oid.${f[0]}.1.$o"}=($outdated)?'':$v;
-        } else {	
-          $d->{"$reg_oid.${f[0]}.1.@{[$i-3]}"}=($outdated)?'':$f[$i];
-        }
-      }
-    }
-  }
 
   sub oidToString {
     my $oid=shift;
@@ -129,5 +105,5 @@ sub pollerHandler {
   unless (open STDIN, ">&PARENT") 
     { logMessage(LOG_ERR, "can't dup STDIN $!"); exit 1; }
   close PARENT;
-  exec {"${subAgentDir}/snmpd-poller"} 'poller', "$shm_id", "$subAgentDir";
+  exec {"${subAgentDir}/snmpd-poller"} 'poller', "$shm_id";
 }
