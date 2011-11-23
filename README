@@ -37,4 +37,6 @@ function=77,   monitorSomething,   <optional arg>
 run ( for tested platforms see INSTALL )
 snmpd-poller debug
 
+if the command works without errors and output the required results,
+than the function is ready to be configured in snmpd service.
 see http://www.net-snmp.org/wiki/index.php/Tut:Extending_snmpd_using_perl for more information ...
