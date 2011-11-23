@@ -34,7 +34,7 @@ sub monitorSomething {
 add a line in snmpd-poller-functions.conf:
 function=77,   monitorSomething,   <optional arg>
 
-run 
+run ( for tested platforms see INSTALL )
 snmpd-poller debug
 
 
