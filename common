@@ -64,11 +64,17 @@ sub readConfig {
       $cmd_timeout=$c[1];
     } elsif ($c[0] eq 'shm_size') {
       $shm_size=$c[1];
+    } elsif ($c[0] eq 'function') {
+      logMessage(LOG_WARNING, "functions in snmpd-poller.conf are depreciated");  
     } else {
-      die "error <$c[0]>";  
-    }
+      logMessage(LOG_ERR, "unexpected token $c[0] in config file,ignoring");  
+    }  
   }
   close CONFIG;
+
+# do not load functions in the agent
+  return 0 if $0 !~ 'snmpd-poller$'; 
+
 # load extention functions
   foreach my $ff ( glob "${subAgentDir}*.functions" ) {
     logMessage(LOG_DEBUG, "loading functions from  $ff");
@@ -76,7 +82,7 @@ sub readConfig {
   }
 # process hostname based configuration files
   my $h = hostname;
-  foreach my $f_config ( (glob "${subAgentDir}snmpd-poller-functions*.conf"), (glob "${subAgentDir}conf.d/${h}*.conf")) {
+  foreach my $f_config ( (glob "${subAgentDir}snmpd-poller*.conf"), (glob "${subAgentDir}conf.d/${h}*.conf")) {
     logMessage(LOG_DEBUG, "loading config from  $f_config");
     open(S_CONFIG,"$f_config") or die;
     while(<S_CONFIG>) {
@@ -90,9 +96,7 @@ sub readConfig {
         my $o = shift @oArg;
         logMessage( LOG_WARNING, "functions for $o, $oArg[0] is already defined, redefining") if defined($oDescr{$o}); 
         $oDescr{$o}=[@oArg];
-      } else {
-        die "error <$c[0]>";  
-      }
+      }     
     }
     close S_CONFIG;
   }
