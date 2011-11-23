@@ -37,3 +37,6 @@ cd snmpd-agent
 %config(noreplace) %attr(444,root,root) /etc/snmp/subagent/*.conf
 
 %changelog
+* Wed Nov 23 2011 Serge V. Sergeev <serge@phorm.com> 1.1.0.0-ssv1
+- Checked out revision 9. from snmpd-agent/tags/1.1.0.0/
+
