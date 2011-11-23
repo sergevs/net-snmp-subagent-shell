@@ -12,7 +12,7 @@ sub monitorSomething {
   my $base=shift;
   my $arg=shift; #optional
   my $t=gettimeofday();
-  my $cmd="mycmd  $cmd_timeout $url|";
+  my $cmd="mycmd  $cmd_timeout $arg|";
   my @r;
   unless (open(HTTPD, $cmd))
     { logMessage(LOG_ERR, "can't process $cmd"); }
@@ -21,10 +21,9 @@ sub monitorSomething {
 #
 #
 # populate @r with results 
+# result have to be a number. 
 #
 #
-#
-    }
   }
   close(HTTPD);
   $t=gettimeofday()-$t;
@@ -32,7 +31,7 @@ sub monitorSomething {
   return fmtRes($base, $cmd, $t, @r);
 }
 
-add in snmpd-poller-functions.conf a line:
+add a line in snmpd-poller-functions.conf:
 function=77,   monitorSomething,   <optional arg>
 
 run 
