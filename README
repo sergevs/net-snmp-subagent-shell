@@ -2,7 +2,41 @@ this is a complete implementation of net-snmp perl subagent.
 
 it can be used to execute arbitrary commands and provide its results via snmp.
 
-3 functions provided to monitor ntp, httpd and core files ( see snmpd-poller ):
+3 functions provided to monitor ntp, httpd and core files ( see snmpd-poller-base.functions ):
 monitorNtp, monitorHttpd, monitorCore
+
+functions are provided in a file with .function extention
+function template:
+ 
+sub monitorSomething {
+  my $base=shift;
+  my $arg=shift; #optional
+  my $t=gettimeofday();
+  my $cmd="mycmd  $cmd_timeout $url|";
+  my @r;
+  unless (open(HTTPD, $cmd))
+    { logMessage(LOG_ERR, "can't process $cmd"); }
+  while (<HTTPD>) {
+    chomp;
+#
+#
+# populate @r with results 
+#
+#
+#
+    }
+  }
+  close(HTTPD);
+  $t=gettimeofday()-$t;
+  $r[0]='-1' if $#r < 0;
+  return fmtRes($base, $cmd, $t, @r);
+}
+
+add in snmpd-poller-functions.conf a line:
+function=77,   monitorSomething,   <optional arg>
+
+run 
+snmpd-poller debug
+
 
 see http://www.net-snmp.org/wiki/index.php/Tut:Extending_snmpd_using_perl for more information ...
