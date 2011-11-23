@@ -6,7 +6,7 @@ use Sys::Hostname;
 
 our $subAgentDir;
 our ($reg_oid, $poller_cycle, $stale_time, $log_to_console, $cmd_timeout, $shm_size);
-our @oDescr;
+our %oDescr;
 return 1;
 
 sub unpackMessage {
@@ -43,7 +43,7 @@ sub logMessage {
 
 sub readConfig {
   logMessage(LOG_INFO, "Reading config ...");
-  @oDescr = ();
+  %oDescr=();
 # process the main configuration file
   open(CONFIG,"${subAgentDir}/snmpd-poller.conf") or die;
   while(<CONFIG>) {
@@ -86,7 +86,10 @@ sub readConfig {
       my @c=split /=/, $_, 2;
       die "error $#c" if $#c != 1;
       if ($c[0] eq 'function') { 
-        push @oDescr, [ split /,/, $c[1] ];
+        my @oArg = split /,/, $c[1];
+        my $o = shift @oArg;
+        logMessage( LOG_WARNING, "functions for $o, $oArg[0] is already defined, redefining") if defined($oDescr{$o}); 
+        $oDescr{$o}=[@oArg];
       } else {
         die "error <$c[0]>";  
       }

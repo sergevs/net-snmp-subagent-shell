@@ -16,7 +16,7 @@ use File::Basename;
 our $subAgentDir=( fileparse($0) )[1];
 require "${subAgentDir}common";
 
-our @oDescr;
+our %oDescr;
 our $shm_size;
 our $poller_cycle;
 our $cmd_timeout;
@@ -42,8 +42,8 @@ $SIG{HUP}='readConfig';
     logMessage(LOG_DEBUG, "polling with $poller_cycle s interval");
     $start_time = gettimeofday();
     $shm_message = "$start_time;"; 
-    for(my $i=0; $i<=$#oDescr; $i++) {
-      $shm_message.=&{$oDescr[$i]->[1]}($oDescr[$i]->[0], $oDescr[$i]->[2]);
+    foreach my $i (keys %oDescr) {
+      $shm_message.=&{$oDescr{$i}->[0]}($i, $oDescr{$i}->[1]);
     } 
 #   add pollerInfo
     $shm_message.=pollerInfo($start_time, scalar gettimeofday());

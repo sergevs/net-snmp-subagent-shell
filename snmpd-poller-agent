@@ -12,8 +12,8 @@ use Time::HiRes qw( gettimeofday );
 use Sys::Syslog qw(:standard :macros);
 use File::Basename qw( fileparse );
 
-#our $subAgentDir=( fileparse($0) )[1];
-$subAgentDir='/etc/snmp/subagent/';
+# needs to be specified here, i don't know how to get script path, $0 does not work
+our $subAgentDir='/etc/snmp/subagent/';
 require "${subAgentDir}common";
 
 our $agent;
