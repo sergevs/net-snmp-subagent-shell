@@ -5,7 +5,7 @@ it can be used to execute arbitrary commands and provide its results via snmp.
 3 functions provided to monitor ntp, httpd and core files ( see snmpd-poller-base.functions ):
 monitorNtp, monitorHttpd, monitorCore
 
-functions are provided in a file with .function extention
+functions can be  provided in a file with .function extention 
 function template:
  
 sub monitorSomething {
