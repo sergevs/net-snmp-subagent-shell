@@ -11,11 +11,12 @@ use Socket;
 use POSIX ":sys_wait_h";
 use Time::HiRes qw(gettimeofday);
 use Sys::Syslog qw(:standard :macros);
+use File::Basename;
 
-our $subAgentDir=$ARGV[1];
-require "${subAgentDir}/snmpd-poller-common";
+our $subAgentDir=( fileparse($0) )[1];
+require "${subAgentDir}common";
 
-our @oDescr;
+our %oDescr;
 our $shm_size;
 our $poller_cycle;
 our $cmd_timeout;
@@ -27,38 +28,46 @@ $SIG{HUP}='readConfig';
 # <oid suffix>:<cmd>:<time spent>:<return code>:<result 1>:<result N>;
   my $shm_message = ''; 
   my $shm_id = $ARGV[0];
-  logMessage(LOG_INFO, "Starting snmpd poller");
+  our $log_to_console = 1 if $shm_id eq 'debug';
+  logMessage(LOG_INFO, "Starting snmpd-poller");
   readConfig(); 
 # init pollerInfo
   my $start_time=gettimeofday();
   $shm_message="$start_time;" . pollerInfo( $start_time );
-  unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1))
-      { logMessage(LOG_ERR, "can't write to shared memory"); }
-# load extention functions
-  foreach my $ff ( glob "${subAgentDir}/*.functions" ) {
-    logMessage(LOG_DEBUG, "loading functions: $ff");
-    require "$ff";
+  if ( $shm_id ne 'debug' ) {
+    unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1))
+        { logMessage(LOG_ERR, "can't write to shared memory"); }
   }
 	while (1) { 
+    logMessage(LOG_DEBUG, "polling with $poller_cycle s interval");
     $start_time = gettimeofday();
     $shm_message = "$start_time;"; 
-    for(my $i=0; $i<=$#oDescr; $i++) {
-      $shm_message.=&{$oDescr[$i]->[1]}($oDescr[$i]->[0], $oDescr[$i]->[2]);
+    foreach my $i (keys %oDescr) {
+      $shm_message.=&{$oDescr{$i}->[0]}($i, $oDescr{$i}->[1]);
     } 
 #   add pollerInfo
     $shm_message.=pollerInfo($start_time, scalar gettimeofday());
 
-    logMessage(LOG_DEBUG, "message: $shm_message");
-    unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1))
-      { logMessage(LOG_ERR, "can't write to shared memory"); }
-
+    logMessage(LOG_DEBUG, "shared memory message: $shm_message");
+    if ( $shm_id eq 'debug' ) {
+      my %oData;
+      unpackMessage ($shm_message, \%oData);
+      my @sortedoids = (sort { new NetSNMP::OID($a)<=>new NetSNMP::OID($b) } ( keys %oData ) );
+      print "produced SNMP tree:\n";
+      foreach my $o (@sortedoids) {
+        print "$o = $oData{$o}\n";
+      }
+    }
+    else {
+      unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1))
+        { logMessage(LOG_ERR, "can't write to shared memory"); }
+    }
     my ($rin, $rout)  = ('', '');
     vec($rin, fileno(STDIN), 1) = 1;
     my ($nfound, $timeleft) = select($rout=$rin, undef, undef, $poller_cycle);
-    logMessage(LOG_DEBUG, "polling");
-    if ($nfound) {
+    if ($nfound == 1 && $shm_id ne 'debug' ) {
         shmctl($shm_id, IPC_RMID, 0);
-        logMessage(LOG_INFO, "Connection lost with snmpd, shutting down");
+        logMessage(LOG_INFO, "Connection lost with snmpd code=$nfound, shutting down");
         exit; 
     }
   }
@@ -81,77 +90,3 @@ sub pollerInfo {
   return fmtRes('1000', 'PStat', $t, $st);
 } 
 
-sub monitorNtp {
-  my $base=shift;
-  my $nsrv=shift;
-  my $t=gettimeofday();
-  my $cmd="/usr/sbin/ntpdate -t $cmd_timeout -q4 $nsrv|";
-  my $r='-1';
-  unless (open(NTP, $cmd))
-    { logMessage(LOG_ERR, "can't process $cmd"); }
-  while (<NTP>) {
-    chomp;
-    $r=(split )[9] if ( /time server/ );
-  }
-  close(NTP);
-  $t=gettimeofday()-$t;
-  return fmtRes($base, $cmd, $t, $r);
-}
-
-sub monitorCore {
-  my $base=shift;
-  my $dir=shift;
-  my $t=gettimeofday();
-  my $cmd="find $dir -maxdepth 1 -name 'core.*'|";
-  my $r=0;
-  unless (open(CCORE, $cmd))
-    { logMessage(LOG_ERR, "can't process $cmd"); }
-  $r++ while (<CCORE>);
-  close(CCORE);
-  $t=gettimeofday()-$t;
-  return fmtRes($base, $cmd, $t, $r);
-}
-
-#Total Accesses: 58760
-#Total kBytes: 37099
-#CPULoad: .0188875
-#Uptime: 426632
-#ReqPerSec: .13773
-#BytesPerSec: 89.0448
-#BytesPerReq: 646.518
-#BusyWorkers: 1
-#IdleWorkers: 99
-
-#Scoreboard Key:
-#   "_" Waiting for Connection, 
-#   "W" Sending Reply, 
-#   "R" Reading Request,
-#   "K" KeepAlive (read), 
-#   "D" DNS Lookup, 
-
-sub monitorHttpd {
-  my $base=shift;
-  my $url=shift;
-  my $t=gettimeofday();
-  my $cmd="curl -s -m $cmd_timeout $url|";
-  my @r;
-  unless (open(HTTPD, $cmd))
-    { logMessage(LOG_ERR, "can't process $cmd"); }
-  while (<HTTPD>) {
-    chomp;
-    my $s=$_;
-    if ( /Scoreboard/ ) {
-      $r[$#r+1]=$s=~tr/_/_/; 
-      $r[$#r+1]=$s=~tr/W/W/; 
-      $r[$#r+1]=$s=~tr/R/R/; 
-      $r[$#r+1]=$s=~tr/K/K/; 
-      $r[$#r+1]=$s=~tr/D/D/; 
-    } elsif ( /^.+:.+$/ ) {
-      $r[$#r+1] = ( split /: /, $s )[1];
-    }
-  }
-  close(HTTPD);
-  $t=gettimeofday()-$t;
-  $r[0]='-1' if $#r < 0;
-  return fmtRes($base, $cmd, $t, @r);
-}

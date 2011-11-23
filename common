@@ -1,0 +1,103 @@
+use warnings;
+use strict;
+
+use Sys::Syslog qw(:standard :macros);
+use Sys::Hostname;
+
+our $subAgentDir;
+our ($reg_oid, $poller_cycle, $stale_time, $log_to_console, $cmd_timeout, $shm_size);
+our %oDescr;
+return 1;
+
+sub unpackMessage {
+  my $msg=shift;
+  my $d=shift;
+  my @od=split /;/, $msg;
+  my $start_time=shift @od;
+  my $outdated=((gettimeofday()-$start_time)>$stale_time)?1:0;
+  foreach  (@od) {
+    last if length($_) == 0;
+    my @f=split /!/;
+    $d->{"$reg_oid.${f[0]}.2.1"}=$f[1];
+    $d->{"$reg_oid.${f[0]}.2.2"}=$f[2];
+    $d->{"$reg_oid.${f[0]}.2.3"}=($outdated)?'':$f[3];
+    for( my $i=4; $i<=$#f; $i++ ) {
+      if ( index($f[$i],'@') != -1 ) {
+        my ( $o,$v ) = split /@/, $f[$i];
+        $d->{"$reg_oid.${f[0]}.1.$o"}=($outdated)?'':$v;
+      } else {	
+        $d->{"$reg_oid.${f[0]}.1.@{[$i-3]}"}=($outdated)?'':$f[$i];
+      }
+    }
+  }
+}
+
+sub logMessage {
+  my $level = shift;
+  my $msg = shift;
+  openlog( "snmpd-poller", 'pid', LOG_DAEMON );
+  syslog ( $level, $msg );
+  closelog;
+  print STDERR "$msg\n" if defined($log_to_console) && $log_to_console != 0;
+}
+
+sub readConfig {
+  logMessage(LOG_INFO, "Reading config ...");
+  %oDescr=();
+# process the main configuration file
+  open(CONFIG,"${subAgentDir}/snmpd-poller.conf") or die;
+  while(<CONFIG>) {
+    chomp;
+    s/ //g;
+    next if ( /^(#|$)/ );
+    my @c=split /=/, $_, 2;
+    die "error $#c" if $#c != 1;
+    if ($c[0] eq 'reg_oid') {
+      $reg_oid=$c[1];
+    } elsif ($c[0] eq 'poller_cycle') {
+      $poller_cycle=$c[1];
+    } elsif ($c[0] eq 'stale_time') {
+      $stale_time=$c[1];
+    } elsif ($c[0] eq 'log_to_console') {
+      $log_to_console=$c[1];
+    } elsif ($c[0] eq 'cmd_timeout') {
+      $cmd_timeout=$c[1];
+    } elsif ($c[0] eq 'shm_size') {
+      $shm_size=$c[1];
+    } elsif ($c[0] eq 'function') {
+      logMessage(LOG_WARNING, "functions in snmpd-poller.conf are depreciated");  
+    } else {
+      logMessage(LOG_ERR, "unexpected token $c[0] in config file,ignoring");  
+    }  
+  }
+  close CONFIG;
+
+# do not load functions in the agent
+  return 0 if $0 !~ 'snmpd-poller$'; 
+
+# load extention functions
+  foreach my $ff ( glob "${subAgentDir}*.functions" ) {
+    logMessage(LOG_DEBUG, "loading functions from  $ff");
+    require "$ff";
+  }
+# process hostname based configuration files
+  my $h = hostname;
+  foreach my $f_config ( (glob "${subAgentDir}snmpd-poller*.conf"), (glob "${subAgentDir}conf.d/${h}*.conf")) {
+    logMessage(LOG_DEBUG, "loading config from  $f_config");
+    open(S_CONFIG,"$f_config") or die;
+    while(<S_CONFIG>) {
+      chomp;
+      s/ //g;
+      next if ( /^(#|$)/ );
+      my @c=split /=/, $_, 2;
+      die "error $#c" if $#c != 1;
+      if ($c[0] eq 'function') { 
+        my @oArg = split /,/, $c[1];
+        my $o = shift @oArg;
+        logMessage( LOG_WARNING, "functions for $o, $oArg[0] is already defined, redefining") if defined($oDescr{$o}); 
+        $oDescr{$o}=[@oArg];
+      }     
+    }
+    close S_CONFIG;
+  }
+}
