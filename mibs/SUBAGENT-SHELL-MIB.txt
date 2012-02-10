@@ -1,0 +1,56 @@
+SUBAGENT-SHELL-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC;
+
+SUBAGENT-SHELL MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL MIB"
+  ::= { enterprises 777 }
+  
+  pollerInfo OBJECT IDENTIFIER ::= { SUBAGENT-SHELL 1 }
+  functionsEntry OBJECT IDENTIFIER ::= { SUBAGENT-SHELL 107 }
+
+  functionsCount  OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Number of executed functions"
+    ::= { pollerInfo 1 }
+
+  functionsSuccessCount  OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Number of successfully executed functions"
+    ::= { pollerInfo 2 }
+
+  functionsFailedCount  OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Number of failed functions"
+    ::= { pollerInfo 3 }
+
+  timeStamp  OBJECT-TYPE
+    SYNTAX      TimeStamp
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Timestamp of last execution"
+    ::= { pollerInfo 4 }
+ 
+  totalExecTime  OBJECT-TYPE
+    SYNTAX      TimeStamp
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Total execution time"
+    ::= { pollerInfo 5 }
+END

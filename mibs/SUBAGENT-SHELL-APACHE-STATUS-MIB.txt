@@ -1,0 +1,169 @@
+SUBAGENT-SHELL-APACHE-STATUS-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Counter64, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-APACHE-STATUS MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL Apache status MIB"
+  ::= { functionsEntry 1 }
+
+  apacheStatusTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF apacheStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of apache status ."
+    ::= { SUBAGENT-SHELL-APACHE-STATUS 1 }
+
+  apacheStatusEntry OBJECT-TYPE 
+    SYNTAX      apacheStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current 
+    DESCRIPTION  "An entry containing management information applicable to apache server status" 
+    INDEX      { apsIndex }
+    ::= { apacheStatusTable 1 } 
+ 
+  apacheStatusEntry ::= 
+    SEQUENCE { 
+        apsIndex                   Integer32, 
+        apsTotalAccesses           Counter64,
+        apsCpuLoad                 OCTET STRING,
+        apsUptime                  TimeStamp,
+        apsBusyWorkers             Gauge32, 
+        apsIdleWorkers             Gauge32, 
+        apsReqPersSec              OCTET STRING, 
+        apsBytesPerSec             OCTET STRING, 
+        apsBytesPerReq             OCTET STRING,
+        apsWaitingForConnection    Gauge32, 
+        apsSendingReply            Gauge32, 
+        apsReadingRequest          Gauge32, 
+        apsKeepAlive               Gauge32, 
+        apsDNSLookup               Gauge32,
+        apsFuncExecTime            OCTET STRING,              
+        apsFuncExecStatus          Integer32,
+        apsUrl                     OCTET STRING              
+    } 
+
+  apsIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each apache status."
+    ::= { apacheStatusEntry 1 }
+
+  apsTotalAccesses OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of access requests."
+    ::= { apacheStatusEntry 2 }
+
+  apsCpuLoad  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "CPU load."
+    ::= { apacheStatusEntry 3 }
+
+  apsUptime   OBJECT-TYPE
+    SYNTAX      TimeStamp
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "CPU load."
+    ::= { apacheStatusEntry 4 }
+
+  apsBusyWorkers OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number busy workers."
+    ::= { apacheStatusEntry 5 }
+
+  apsIdleWorkers  OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of idle workers."
+    ::= { apacheStatusEntry 6 }
+
+  apsReqPersSec   OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Requests per second."
+    ::= { apacheStatusEntry 7 }
+
+  apsBytesPerSec  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Bytes per second."
+    ::= { apacheStatusEntry 8 }
+
+  apsBytesPerReq  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Bytes per requests."
+    ::= { apacheStatusEntry 9 }
+
+  apsWaitingForConnection OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of waiting for connections threads."
+    ::= { apacheStatusEntry 10 }
+
+  apsSendingReply OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of sending reply threads."
+    ::= { apacheStatusEntry 11 }
+
+  apsReadingRequest OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of reading reply threads."
+    ::= { apacheStatusEntry 12 }
+
+  apsKeepAlive OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of keep alive threads."
+    ::= { apacheStatusEntry 13 }
+
+  apsDNSLookup OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of DNS lookups threads."
+    ::= { apacheStatusEntry 14 }
+
+  apsFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { apacheStatusEntry 15 }
+
+  apsFuncExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { apacheStatusEntry 16 }
+
+  apsUrl OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Status url."
+    ::= { apacheStatusEntry 17 }
+END
