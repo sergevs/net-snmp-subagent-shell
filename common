@@ -3,33 +3,43 @@ use strict;
 
 use Sys::Syslog qw(:standard :macros);
 use Sys::Hostname;
+use SNMP;
+use NetSNMP::ASN qw(:all);
 
 our $subAgentDir;
 our ($reg_oid, $poller_cycle, $stale_time, $log_to_console, $cmd_timeout, $shm_size);
 our %oDescr;
-return 1;
 
+SNMP::initMib(); # parses default list of Mib modules from default dirs
+SNMP::addMibDirs("${subAgentDir}mibs/");
+#SNMP::addMibDirs('/home/serge_sergeev/snmpd-agent2/mibs/');
+SNMP::loadModules("ALL");
+
+return 1;
 sub unpackMessage {
-  my $msg=shift;
-  my $d=shift;
-  my @od=split /;/, $msg;
-  my $start_time=shift @od;
-  my $outdated=((gettimeofday()-$start_time)>$stale_time)?1:0;
-  foreach  (@od) {
-    last if length($_) == 0;
-    my @f=split /!/;
-    $d->{"$reg_oid.${f[0]}.2.1"}=$f[1];
-    $d->{"$reg_oid.${f[0]}.2.2"}=$f[2];
-    $d->{"$reg_oid.${f[0]}.2.3"}=($outdated)?'':$f[3];
-    for( my $i=4; $i<=$#f; $i++ ) {
-      if ( index($f[$i],'@') != -1 ) {
-        my ( $o,$v ) = split /@/, $f[$i];
-        $d->{"$reg_oid.${f[0]}.1.$o"}=($outdated)?'':$v;
-      } else {	
-        $d->{"$reg_oid.${f[0]}.1.@{[$i-3]}"}=($outdated)?'':$f[$i];
+  my $shm_message = shift;
+  my $oData = shift;
+  my %shm_data = unpack( 'S/(S/A* S/A*)', $shm_message );
+  my %typeMap = ( 'GAUGE'=>ASN_GAUGE,'TICKS'=>ASN_TIMETICKS,'INTEGER'=>ASN_INTEGER, 'INTEGER32'=>ASN_INTEGER,'COUNTER64'=>ASN_COUNTER64,'OCTETSTR'=>ASN_OCTET_STR );
+  while ( my($k,$v) = each %shm_data) { 
+    if ( $k !~ /^\./ ) { 
+      # a mib variable with or without index
+      my ( $mvar, $idx ) = split /\./, $k; 
+      if (my $node = $SNMP::MIB{$mvar}) { 
+        $$oData{($node->{'objectID'}) . (defined($idx)?".$idx":'') }->{'V'} = $v;
+        $$oData{($node->{'objectID'}) . (defined($idx)?".$idx":'') }->{'T'} = $typeMap{$node->{'type'}};
+#        logMessage(LOG_DEBUG, "Type $node->{'objectID'} is $node->{'type'} map to $typeMap{$node->{'type'}}" ); 
+      } else {
+        logMessage(LOG_ERR, "$k is not found in a MIB, skipping"); 
       }
     }
   }
+  return (sort { new NetSNMP::OID($a)<=>new NetSNMP::OID($b) } ( keys %$oData ) );
+}
+
+sub unpackOData {
+  my $r = shift;
+  return ( defined($$r{'T'})?$$r{'T'}:ASN_OCTET_STR, $$r{'V'} );
 }
 
 sub logMessage {
@@ -93,9 +103,10 @@ sub readConfig {
       die "error $#c" if $#c != 1;
       if ($c[0] eq 'function') { 
         my @oArg = split /,/, $c[1];
-        my $o = shift @oArg;
-        logMessage( LOG_WARNING, "functions for $o, $oArg[0] is already defined, redefining") if defined($oDescr{$o}); 
-        $oDescr{$o}=[@oArg];
+        my ($bi,$f) = ( shift @oArg, shift @oArg );
+        my $k = pack('d a*', $bi, $f );
+        logMessage( LOG_WARNING, "functions for $bi, $f is already defined, redefining") if defined($oDescr{$k}); 
+        $oDescr{$k}=[@oArg];
       }     
     }
     close S_CONFIG;

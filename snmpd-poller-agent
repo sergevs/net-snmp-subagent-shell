@@ -3,8 +3,8 @@
 use strict;
 use warnings;
 use NetSNMP::agent (':all');
+use NetSNMP::ASN qw(:all);
 use NetSNMP::OID (':all');
-use NetSNMP::ASN qw(ASN_OCTET_STR);
 use IPC::SysV qw(IPC_PRIVATE IPC_RMID S_IRWXU);
 use Socket;
 use POSIX ":sys_wait_h";
@@ -13,7 +13,8 @@ use Sys::Syslog qw(:standard :macros);
 use File::Basename qw( fileparse );
 
 # needs to be specified here, i don't know how to get script path, $0 does not work
-our $subAgentDir='/etc/snmp/subagent/';
+#our $subAgentDir='/etc/snmp/subagent/';
+our $subAgentDir='/home/serge_sergeev/snmpd-agent2/';
 require "${subAgentDir}common";
 
 our $agent;
@@ -30,16 +31,16 @@ sub pollerHandler {
     my $oid=shift;
     return "." . join (".", $oid->to_array());
   }
-
   my %oData;
   my @sortedoids;
   my $shm_message;
   unless (shmread($shm_id, $shm_message, 0, $shm_size-1))
     { logMessage(LOG_ERR, "can't read shared memory message "); }
-  substr($shm_message, index($shm_message, "\0"))='';
+#  substr($shm_message, index($shm_message, "\0"))='';
   logMessage(LOG_DEBUG, "read message:  $shm_message"); 
-  unpackMessage ($shm_message, \%oData);
-  @sortedoids = (sort { new NetSNMP::OID($a)<=>new NetSNMP::OID($b) } ( keys %oData ) );
+#read and unpack
+  @sortedoids = unpackMessage( $shm_message, \%oData );
+#
   foreach my $k(@sortedoids) {
     logMessage(LOG_DEBUG, "sorted oids $k -> $oData{$k}") ;
   }
@@ -50,7 +51,8 @@ sub pollerHandler {
       my $soid=oidToString($oid); 
       logMessage(LOG_DEBUG, "MODE: GET $soid"); 
       if ( defined ( $oData{"$soid"} )) {
-        $request->setValue(ASN_OCTET_STR, $oData{"$soid"});
+#        $request->setValue(ASN_OCTET_STR, $oData{"$soid"}->{'V'});
+        $request->setValue(unpackOData($oData{$soid}));
       } 
     } elsif ( $request_info->getMode() == MODE_GETNEXT ) {
       logMessage(LOG_DEBUG, "MODE: GETNEXT, requested $oid"); 
@@ -58,10 +60,12 @@ sub pollerHandler {
       foreach (@sortedoids) { last if (new NetSNMP::OID($_) == $oid); $oididx++; }
       if ( $oid < new NetSNMP::OID($sortedoids[0]) ) {
         $request->setOID(new NetSNMP::OID($sortedoids[0]));
-        $request->setValue(ASN_OCTET_STR, $oData{$sortedoids[0]});
+#        $request->setValue(ASN_OCTET_STR, $oData{$sortedoids[0]}->{'V'});
+        $request->setValue(unpackOData($oData{$sortedoids[0]}));
       } elsif ( defined($sortedoids[$oididx+1]) && defined($oData{$sortedoids[$oididx+1]}) ) {
         $request->setOID(new NetSNMP::OID($sortedoids[$oididx+1]));
-        $request->setValue(ASN_OCTET_STR, $oData{$sortedoids[$oididx+1]});
+#        $request->setValue(ASN_OCTET_STR, $oData{$sortedoids[$oididx+1]}->{'V'});
+        $request->setValue(unpackOData($oData{$sortedoids[$oididx+1]}));
       } elsif (!defined( $oData{oidToString($oid)})) {
         logMessage(LOG_DEBUG, "LAST CHANCE requested $oid"); 
         my @nsoids=sort {new NetSNMP::OID($a)<=>new NetSNMP::OID($b)} (@sortedoids, oidToString($oid));
@@ -69,7 +73,8 @@ sub pollerHandler {
         foreach (@nsoids) { last if (new NetSNMP::OID($_) == $oid); $oididx++; }
         if ( defined($nsoids[$oididx+1]) && defined($oData{$nsoids[$oididx+1]}) ) {
           $request->setOID(new NetSNMP::OID($nsoids[$oididx+1]));
-          $request->setValue(ASN_OCTET_STR, $oData{$nsoids[$oididx+1]});
+#          $request->setValue(ASN_OCTET_STR, $oData{$nsoids[$oididx+1]}->{'V'});
+          $request->setValue(unpackOData($oData{$nsoids[$oididx+1]}));
         }
       }
     }

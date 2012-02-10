@@ -5,7 +5,6 @@ no strict "refs";
 use warnings;
 
 use NetSNMP::OID (':all');
-use NetSNMP::ASN qw(ASN_OCTET_STR);
 use IPC::SysV qw(IPC_PRIVATE IPC_RMID S_IRWXU);
 use Socket;
 use POSIX ":sys_wait_h";
@@ -21,44 +20,43 @@ our $shm_size;
 our $poller_cycle;
 our $cmd_timeout;
 
+
 $SIG{HUP}='readConfig';
 
 {
-# shm_message format:
-# <oid suffix>:<cmd>:<time spent>:<return code>:<result 1>:<result N>;
-  my $shm_message = ''; 
+  my %otree = (); 
+  my %fStatus = (); 
+  my $shm_message;
   my $shm_id = $ARGV[0];
+  my $start_time;
   our $log_to_console = 1 if $shm_id eq 'debug';
   logMessage(LOG_INFO, "Starting snmpd-poller");
   readConfig(); 
-# init pollerInfo
-  my $start_time=gettimeofday();
-  $shm_message="$start_time;" . pollerInfo( $start_time );
-  if ( $shm_id ne 'debug' ) {
-    unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1))
-        { logMessage(LOG_ERR, "can't write to shared memory"); }
-  }
+
 	while (1) { 
     logMessage(LOG_DEBUG, "polling with $poller_cycle s interval");
-    $start_time = gettimeofday();
-    $shm_message = "$start_time;"; 
-    foreach my $i (keys %oDescr) {
-      $shm_message.=&{$oDescr{$i}->[0]}($i, $oDescr{$i}->[1]);
-    } 
-#   add pollerInfo
-    $shm_message.=pollerInfo($start_time, scalar gettimeofday());
+    %fStatus = ('functionsCount'=>0,'functionsSuccessCount'=>0, 'functionsFailedCount'=>0, 'timeStamp'=>scalar gettimeofday(), 'totalExecTime'=>$0);
+    %otree = (); 
 
-    logMessage(LOG_DEBUG, "shared memory message: $shm_message");
-    if ( $shm_id eq 'debug' ) {
-      my %oData;
-      unpackMessage ($shm_message, \%oData);
-      my @sortedoids = (sort { new NetSNMP::OID($a)<=>new NetSNMP::OID($b) } ( keys %oData ) );
-      print "produced SNMP tree:\n";
+    foreach my $i (keys %oDescr) {
+      my ($bi,$func) = unpack('d a*', $i);
+      print "$func $bi \n"; 
+      $fStatus{'functionsCount'} += 1;  
+      if ( &$func( $bi, \%otree, @{$oDescr{$i}} ) == 0 ) {$fStatus{'functionsSuccessCount'} += 1} else {$fStatus{'functionsFailedCount'} += 1}
+    } 
+
+#   add pollerInfo
+    pollerInfo(\%otree,\%fStatus);
+    $shm_message = pack( 'S(S/A* S/A*)*', scalar keys( %otree ), %otree );
+#    while (my ($k,$v) = each %otree) { logMessage(LOG_DEBUG, "otree: $k => $v" );}
+
+    my %oData;
+      my @sortedoids = unpackMessage( $shm_message, \%oData );
       foreach my $o (@sortedoids) {
-        print "$o = $oData{$o}\n";
+        my ( $t, $v ) = unpackOData($oData{$o});
+        logMessage(LOG_DEBUG, "otree: $o = $t , $v" );
       }
-    }
-    else {
+    if ( $shm_id ne 'debug' ) {
       unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1))
         { logMessage(LOG_ERR, "can't write to shared memory"); }
     }
@@ -81,12 +79,10 @@ sub fmtRes {
   return sprintf ("%s!%.130s!%.3f!0!", $base, $cmd, $t) . join("!",@r) . ";"; 
 }
 
-#Poller info mib:
-# base! 1000, cmd! PStat, time, start time
 sub pollerInfo {
-  my $st=shift;
-  my $ft=shift;
-  my $t=($st and $ft)?sprintf ("%.3f",$ft-$st):'-1';
-  return fmtRes('1000', 'PStat', $t, $st);
+  my $o=shift;
+  my $f=shift;
+  $$f{'totalExecTime'}=scalar gettimeofday - $$f{'timeStamp'};
+  while ( my($k,$v) = each  %$f ){ $$o{$k}=$v; }
+  return 0;
 } 
-

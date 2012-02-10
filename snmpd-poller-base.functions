@@ -77,4 +77,62 @@ sub monitorHttpd {
   return fmtRes($base, $cmd, $t, @r);
 }
 
+
+sub apacheStatusMIB {
+  my $i=shift;$i = ".$i";
+  my $o=shift;
+  my $url=shift;
+  my $t=gettimeofday();
+  my $cmd="curl -s -m $cmd_timeout $url";
+
+  foreach (`$cmd`) {
+    chomp;
+    my $s=$_;
+    if ( /Scoreboard/ ) {
+      $$o{'apsWaitingForConnection' . $i}=$s=~tr/_/_/; 
+      $$o{'apsSendingReply' . $i}=$s=~tr/W/W/; 
+      $$o{'apsReadingRequest' . $i}=$s=~tr/R/R/; 
+      $$o{'apsKeepAlive' . $i}=$s=~tr/K/K/; 
+      $$o{'apsDNSLookup' . $i}=$s=~tr/D/D/; 
+    } elsif ( /^Total Accesses/ ) {
+      $$o{'apsTotalAccesses' . $i} = ( split /: /, $s )[1];
+    } elsif ( /^CPULoad/ ) {
+      $$o{'apsCpuLoad' . $i} = ( split /: /, $s )[1];
+    } elsif ( /^Uptime/ ) {
+      $$o{'apsUptime' . $i} = ( split /: /, $s )[1];
+    } elsif ( /^BusyWorkers/ ) {
+      $$o{'apsBusyWorkers' . $i} = ( split /: /, $s )[1];
+    } elsif ( /^IdleWorkers/ ) {
+      $$o{'apsIdleWorkers' . $i} = ( split /: /, $s )[1];
+    } elsif ( /^ReqPerSec/ ) {
+      $$o{'apsReqPersSec' . $i} = ( split /: /, $s )[1];
+    } elsif ( /^BytesPerSec/ ) {
+      $$o{'apsBytesPerSec' . $i} = ( split /: /, $s )[1];
+    } elsif ( /^BytesPerReq/ ) {
+      $$o{'apsBytesPerReq' . $i} = ( split /: /, $s )[1];
+    }
+  }
+  my $r = $? >> 8;
+  $$o{'apsIndex' . $i} = $i;
+  $$o{'apsIndex' . $i} =~s/\.//;
+  $$o{'apsFuncExecTime' . $i} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'apsFuncExecStatus' . $i} = $r;
+  $$o{'apsUrl' . $i} = $url;
+  return  $r;
+}
+
+sub monitorNtpMIB {
+  my $base=shift;
+  my $nsrv=shift;
+  my $t=gettimeofday();
+  my $cmd="/usr/sbin/ntpdate -t $cmd_timeout -q4 $nsrv";
+  foreach (`$cmd`) {
+    chomp;
+    $r=(split )[9] if ( /time server/ );
+  }
+  my $r = $? >> 8;
+  $t=gettimeofday()-$t;
+  return $r;
+}
+
 return 1;
