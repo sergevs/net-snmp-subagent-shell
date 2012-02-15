@@ -12,10 +12,9 @@ our %oDescr;
 
 SNMP::initMib(); # parses default list of Mib modules from default dirs
 SNMP::addMibDirs("${subAgentDir}mibs/");
-#SNMP::addMibDirs('/home/serge_sergeev/snmpd-agent2/mibs/');
 SNMP::loadModules("ALL");
-
 return 1;
+
 sub unpackMessage {
   my $shm_message = shift;
   my $oData = shift;
