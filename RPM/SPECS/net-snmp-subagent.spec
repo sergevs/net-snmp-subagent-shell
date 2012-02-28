@@ -20,7 +20,7 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 %install
 %__rm -rf %buildroot
 cd snmpd-agent 
-%__mkdir_p %buildroot/etc/snmp/subagent/conf.d
+%__mkdir_p %buildroot/etc/snmp/subagent/{conf.d,mibs}
 %__install common %buildroot/etc/snmp/subagent
 %__install snmpd-* %buildroot/etc/snmp/subagent
 %__install *.functions %buildroot/etc/snmp/subagent
@@ -28,7 +28,9 @@ cd snmpd-agent
 
 %files
 %attr(755,root,root) %dir /etc/snmp/subagent
+%attr(755,root,root) %dir /etc/snmp/subagent/mibs
 %attr(755,root,root) %dir /etc/snmp/subagent/conf.d
+%attr(755,root,root) /etc/snmp/subagent/mibs/*
 %attr(444,root,root) /etc/snmp/subagent/common
 %attr(744,root,root) /etc/snmp/subagent/snmpd-poller
 %attr(444,root,root) /etc/snmp/subagent/snmpd-poller-agent
