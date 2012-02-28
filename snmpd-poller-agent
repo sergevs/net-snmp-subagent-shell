@@ -5,7 +5,7 @@ use warnings;
 use NetSNMP::agent (':all');
 use NetSNMP::ASN qw(:all);
 use NetSNMP::OID (':all');
-use IPC::SysV qw(IPC_PRIVATE IPC_RMID S_IRWXU);
+use IPC::SysV qw(IPC_CREAT IPC_PRIVATE IPC_RMID S_IRWXU);
 use Socket;
 use POSIX ":sys_wait_h";
 use Time::HiRes qw( gettimeofday );
@@ -13,8 +13,7 @@ use Sys::Syslog qw(:standard :macros);
 use File::Basename qw( fileparse );
 
 # needs to be specified here, i don't know how to get script path, $0 does not work
-#our $subAgentDir='/etc/snmp/subagent/';
-our $subAgentDir='/home/serge_sergeev/snmpd-agent2/';
+our $subAgentDir='/etc/snmp/subagent/';
 require "${subAgentDir}common";
 
 our $agent;
@@ -22,7 +21,7 @@ our $reg_oid;
 our $shm_size;
 our $stale_time;
 
-my $shm_id;
+my ($shm_id, $sem_id);
 
 sub pollerHandler {
   my ($handler, $registration_info, $request_info, $requests) = @_;
@@ -34,12 +33,15 @@ sub pollerHandler {
   my %oData;
   my @sortedoids;
   my $shm_message;
-  unless (shmread($shm_id, $shm_message, 0, $shm_size-1))
-    { logMessage(LOG_ERR, "can't read shared memory message "); }
+
+  semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
+  unless (shmread($shm_id, $shm_message, 0, $shm_size-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
+  semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
 #  substr($shm_message, index($shm_message, "\0"))='';
-  logMessage(LOG_DEBUG, "read message:  $shm_message"); 
+  logMessage(LOG_DEBUG, "read message:  <$shm_message>, length " . length($shm_message) ); 
 #read and unpack
   @sortedoids = unpackMessage( $shm_message, \%oData );
+  return if ($#sortedoids < 0 );
 #
   foreach my $k(@sortedoids) {
     logMessage(LOG_DEBUG, "sorted oids $k -> $oData{$k}") ;
@@ -51,7 +53,6 @@ sub pollerHandler {
       my $soid=oidToString($oid); 
       logMessage(LOG_DEBUG, "MODE: GET $soid"); 
       if ( defined ( $oData{"$soid"} )) {
-#        $request->setValue(ASN_OCTET_STR, $oData{"$soid"}->{'V'});
         $request->setValue(unpackOData($oData{$soid}));
       } 
     } elsif ( $request_info->getMode() == MODE_GETNEXT ) {
@@ -60,20 +61,17 @@ sub pollerHandler {
       foreach (@sortedoids) { last if (new NetSNMP::OID($_) == $oid); $oididx++; }
       if ( $oid < new NetSNMP::OID($sortedoids[0]) ) {
         $request->setOID(new NetSNMP::OID($sortedoids[0]));
-#        $request->setValue(ASN_OCTET_STR, $oData{$sortedoids[0]}->{'V'});
         $request->setValue(unpackOData($oData{$sortedoids[0]}));
       } elsif ( defined($sortedoids[$oididx+1]) && defined($oData{$sortedoids[$oididx+1]}) ) {
         $request->setOID(new NetSNMP::OID($sortedoids[$oididx+1]));
-#        $request->setValue(ASN_OCTET_STR, $oData{$sortedoids[$oididx+1]}->{'V'});
         $request->setValue(unpackOData($oData{$sortedoids[$oididx+1]}));
       } elsif (!defined( $oData{oidToString($oid)})) {
         logMessage(LOG_DEBUG, "LAST CHANCE requested $oid"); 
         my @nsoids=sort {new NetSNMP::OID($a)<=>new NetSNMP::OID($b)} (@sortedoids, oidToString($oid));
-        my $oididx=0;
+        $oididx=0;
         foreach (@nsoids) { last if (new NetSNMP::OID($_) == $oid); $oididx++; }
         if ( defined($nsoids[$oididx+1]) && defined($oData{$nsoids[$oididx+1]}) ) {
           $request->setOID(new NetSNMP::OID($nsoids[$oididx+1]));
-#          $request->setValue(ASN_OCTET_STR, $oData{$nsoids[$oididx+1]}->{'V'});
           $request->setValue(unpackOData($oData{$nsoids[$oididx+1]}));
         }
       }
@@ -84,31 +82,25 @@ sub pollerHandler {
 # ===== main =====
 {
   readConfig();
-  unless (defined($shm_id=shmget(IPC_PRIVATE, $shm_size, S_IRWXU)))
-    { logMessage(LOG_ERR, "can't shmget $!"); exit 1; }
-  unless (socketpair(CHILD, PARENT, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) 
-    { logMessage(LOG_ERR, "can't make sockepair $!"); exit 1; };
 
+  unless (defined($shm_id=shmget(IPC_PRIVATE, $shm_size, S_IRWXU)))   { logMessage(LOG_ERR, "can't shmget $!"); exit 1; }
+  unless (defined($sem_id=semget($shm_id, 1, IPC_CREAT | 0700)))      { logMessage(LOG_ERR, "can't semctl $!"); exit 1; }
+  unless (socketpair(CHILD, PARENT, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) { logMessage(LOG_ERR, "can't make sockepair $!"); exit 1; };
   my $pid;
   if ($pid = fork) {
 # ===== parent ======
     close PARENT;
-    waitpid($pid, WNOHANG);
-    unless ($agent) 
-      { logMessage (LOG_ERR, 'Agent is not initialized'); exit 1; }
-    unless ($reg_oid) 
-      { logMessage (LOG_ERR, 'Root OID is not configured'); exit 1; }
+    unless ($agent)   { logMessage (LOG_ERR, 'Agent is not initialized'); exit 1; }
+    unless ($reg_oid) { logMessage (LOG_ERR, 'Root OID is not configured'); exit 1; }
     unless ($agent->register("pollerAgent", new NetSNMP::OID($reg_oid), \&pollerHandler))  
-      { logMessage (LOG_ERR, 'failed to register agent'); exit 1; }
+            { logMessage (LOG_ERR, 'failed to register agent'); exit 1; }
     logMessage (LOG_INFO, 'Agent is initialized'); 
     last;
   } 
 # ===== child =====
   close CHILD;
-  unless ( defined( $pid ) ) 
-    { logMessage(LOG_ERR, "cannot fork: $!"); exit 1; }
-  unless (open STDIN, ">&PARENT") 
-    { logMessage(LOG_ERR, "can't dup STDIN $!"); exit 1; }
+  unless ( defined( $pid ) )      { logMessage(LOG_ERR, "cannot fork: $!"); exit 1; }
+  unless (open STDIN, ">&PARENT") { logMessage(LOG_ERR, "can't dup STDIN $!"); exit 1; }
   close PARENT;
   exec {"${subAgentDir}snmpd-poller"} 'poller', "$shm_id";
 }

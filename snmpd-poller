@@ -28,8 +28,13 @@ $SIG{HUP}='readConfig';
   my %fStatus = (); 
   my $shm_message;
   my $shm_id = $ARGV[0];
+  my $sem_id ;
   my $start_time;
   our $log_to_console = 1 if $shm_id eq 'debug';
+
+  if ( $shm_id ne 'debug' ) {
+    unless($sem_id=semget($shm_id, 0, 0)){ logMessage(LOG_ERR, "can't get semaphore"); }
+  }
   logMessage(LOG_INFO, "Starting snmpd-poller");
   readConfig(); 
 
@@ -40,7 +45,6 @@ $SIG{HUP}='readConfig';
 
     foreach my $i (keys %oDescr) {
       my ($bi,$func) = unpack('d a*', $i);
-      print "$func $bi \n"; 
       $fStatus{'functionsCount'} += 1;  
       if ( &$func( $bi, \%otree, @{$oDescr{$i}} ) == 0 ) {$fStatus{'functionsSuccessCount'} += 1} else {$fStatus{'functionsFailedCount'} += 1}
     } 
@@ -57,14 +61,16 @@ $SIG{HUP}='readConfig';
         logMessage(LOG_DEBUG, "otree: $o = $t , $v" );
       }
     if ( $shm_id ne 'debug' ) {
-      unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1))
-        { logMessage(LOG_ERR, "can't write to shared memory"); }
+      semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
+      unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
+      semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
     }
     my ($rin, $rout)  = ('', '');
     vec($rin, fileno(STDIN), 1) = 1;
     my ($nfound, $timeleft) = select($rout=$rin, undef, undef, $poller_cycle);
     if ($nfound == 1 && $shm_id ne 'debug' ) {
         shmctl($shm_id, IPC_RMID, 0);
+        semctl($sem_id, 0, IPC_RMID, 0);
         logMessage(LOG_INFO, "Connection lost with snmpd code=$nfound, shutting down");
         exit; 
     }

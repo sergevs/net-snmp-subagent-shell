@@ -1,36 +1,3 @@
-# time difference with an ntp server
-sub monitorNtp {
-  my $base=shift;
-  my $nsrv=shift;
-  my $t=gettimeofday();
-  my $cmd="/usr/sbin/ntpdate -t $cmd_timeout -q4 $nsrv|";
-  my $r='-1';
-  unless (open(NTP, $cmd))
-    { logMessage(LOG_ERR, "can't process $cmd"); }
-  while (<NTP>) {
-    chomp;
-    $r=(split )[9] if ( /time server/ );
-  }
-  close(NTP);
-  $t=gettimeofday()-$t;
-  return fmtRes($base, $cmd, $t, $r);
-}
-
-# number of core files found in dir
-sub monitorCore {
-  my $base=shift;
-  my $dir=shift;
-  my $t=gettimeofday();
-  my $cmd="find $dir -maxdepth 1 -name 'core.*'|";
-  my $r=0;
-  unless (open(CCORE, $cmd))
-    { logMessage(LOG_ERR, "can't process $cmd"); }
-  $r++ while (<CCORE>);
-  close(CCORE);
-  $t=gettimeofday()-$t;
-  return fmtRes($base, $cmd, $t, $r);
-}
-
 # apache httpd mod_status dashboard
 
 #Total Accesses: 58760
@@ -49,34 +16,6 @@ sub monitorCore {
 #   "R" Reading Request,
 #   "K" KeepAlive (read), 
 #   "D" DNS Lookup, 
-
-sub monitorHttpd {
-  my $base=shift;
-  my $url=shift;
-  my $t=gettimeofday();
-  my $cmd="curl -s -m $cmd_timeout $url|";
-  my @r;
-  unless (open(HTTPD, $cmd))
-    { logMessage(LOG_ERR, "can't process $cmd"); }
-  while (<HTTPD>) {
-    chomp;
-    my $s=$_;
-    if ( /Scoreboard/ ) {
-      $r[$#r+1]=$s=~tr/_/_/; 
-      $r[$#r+1]=$s=~tr/W/W/; 
-      $r[$#r+1]=$s=~tr/R/R/; 
-      $r[$#r+1]=$s=~tr/K/K/; 
-      $r[$#r+1]=$s=~tr/D/D/; 
-    } elsif ( /^.+:.+$/ ) {
-      $r[$#r+1] = ( split /: /, $s )[1];
-    }
-  }
-  close(HTTPD);
-  $t=gettimeofday()-$t;
-  $r[0]='-1' if $#r < 0;
-  return fmtRes($base, $cmd, $t, @r);
-}
-
 
 sub apacheStatusMIB {
   my $i=shift;$i = ".$i";
@@ -121,17 +60,23 @@ sub apacheStatusMIB {
   return  $r;
 }
 
-sub monitorNtpMIB {
-  my $base=shift;
+sub monitorNtp {
+  my $base=shift;$base = ".$base";
+  my $o=shift;
   my $nsrv=shift;
   my $t=gettimeofday();
   my $cmd="/usr/sbin/ntpdate -t $cmd_timeout -q4 $nsrv";
+  my $v;
+
   foreach (`$cmd`) {
     chomp;
-    $r=(split )[9] if ( /time server/ );
+    $v=(split )[9] if ( /time server/ );
   }
   my $r = $? >> 8;
-  $t=gettimeofday()-$t;
+  $$o{$base. '.1.1'} = $v;
+  $$o{$base. '.2.1'} = $cmd;
+  $$o{$base. '.2.2'} = gettimeofday()-$t;
+  $$o{$base. '.2.3'} = $r;
   return $r;
 }
 
