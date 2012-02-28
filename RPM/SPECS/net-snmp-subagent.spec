@@ -24,7 +24,7 @@ cd snmpd-agent
 %__install common %buildroot/etc/snmp/subagent
 %__install snmpd-* %buildroot/etc/snmp/subagent
 %__install *.functions %buildroot/etc/snmp/subagent
-%__install reload %buildroot/etc/snmp/subagent
+%__install mibs/* %buildroot/etc/snmp/subagent/mibs
 
 %files
 %attr(755,root,root) %dir /etc/snmp/subagent
@@ -34,7 +34,6 @@ cd snmpd-agent
 %attr(444,root,root) /etc/snmp/subagent/common
 %attr(744,root,root) /etc/snmp/subagent/snmpd-poller
 %attr(444,root,root) /etc/snmp/subagent/snmpd-poller-agent
-%attr(744,root,root) /etc/snmp/subagent/reload
 %attr(444,root,root) /etc/snmp/subagent/*.functions
 %config(noreplace) %attr(444,root,root) /etc/snmp/subagent/*.conf
 
