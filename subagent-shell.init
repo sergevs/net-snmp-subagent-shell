@@ -1,0 +1,64 @@
+#!/bin/sh
+#
+# messagebus:   The snmpd subagent 
+#
+# chkconfig:    345 22 85 
+# description:  This is a daemon extend standard snmp functionality with user defined MIB
+#
+# processname: subagent-shell
+# pidfile: /var/run/subagent-shell.pid
+#
+
+# Sanity checks.
+[ -x /usr/bin/subagent-shell ] || exit 0
+
+RETVAL=0
+source /etc/rc.d/init.d/functions
+
+start() {
+    echo -n $"Starting snmp subagent shell daemon: "
+    /usr/bin/subagent-shell -d -p /var/run/subagent-shell.pid
+    RETVAL=$?
+    echo
+}
+
+stop() {
+    echo -n $"Stopping system message bus: "
+
+    ## we don't want to kill all the per-user $processname, we want
+    ## to use the pid file *only*; because we use the fake nonexistent 
+    ## program name "$servicename" that should be safe-ish
+    killproc /usr/sbin/subagent-shell
+    RETVAL=$?
+    echo
+}
+
+# See how we were called.
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status $processname
+        RETVAL=$?
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    condrestart)
+        stop
+        start
+        ;;
+    reload)
+        echo "Subagent-shell can't reload its configuration, you have to restart it"
+        RETVAL=$?
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|reload}"
+        ;;
+esac
+exit $RETVAL

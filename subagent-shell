@@ -1,0 +1,398 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Sys::Syslog qw(:standard :macros);
+use Sys::Hostname;
+use NetSNMP::agent (':all');
+use NetSNMP::ASN qw(:all);
+use NetSNMP::OID (':all');
+use SNMP;
+use IPC::SysV qw(IPC_CREAT IPC_PRIVATE IPC_RMID S_IRWXU);
+use Socket;
+use POSIX qw(:sys_wait_h strftime);
+use Time::HiRes qw( gettimeofday );
+use Sys::Syslog qw(:standard :macros);
+use File::Basename qw( fileparse );
+use Getopt::Long;
+
+our ($reg_oid, $poller_cycle, $stale_time, $log_to_console, $log_level, $cmd_timeout, $shm_size);
+my  %oDescr;
+my  ($shm_id, $sem_id);
+my  $running=1;
+my  $remove_pid_file;
+my  %agentMib = ( rootMIB => 'SUBAGENT-SHELL',
+                  functionsCount => 'ssFunctionsCount',
+                  functionsSuccessCount => 'ssFunctionsSuccessCount', 
+                  functionsFailedCount => 'ssFunctionsFailedCount', 
+                  timeStamp => 'ssTimeStamp', 
+                  totalExecTime => 'ssTotalExecTime' );
+
+my $opt = {
+  daemon => 0,
+  pid_file => "",
+  base_dir => '/etc/snmp/subagent/',
+  mib_dir => '/etc/snmp/subagent/mibs/',
+  agentx_socket => "",
+  verbose => 0,
+  help => 0,
+};
+
+Getopt::Long::Configure (qw(bundling pass_through));
+
+# Get options.
+Getopt::Long::GetOptions(
+  'daemon|d' => \$opt->{daemon},
+  'pid-file|p=s' => \$opt->{pid_file},
+  'base-dir|b=s' => \$opt->{base_dir},
+  'mib-dir|m=s' => \$opt->{mib_dir},
+  'agentx-socket=s' => \$opt->{agentx_socket},
+  'verbose|v+' => \$opt->{verbose},
+  'help|h' => \$opt->{help},
+);
+
+our ( $subAgentDir,$mibDir ); 
+$subAgentDir = $opt->{base_dir}  if !defined($subAgentDir);
+$mibDir = $opt->{mib_dir}  if !defined($mibDir);
+
+sub help {
+  print <<EOHELP;
+Usage: subagent-shell [options]
+
+Options:
+  -d.  --daemon             Work as daemon
+  -p,  --pid-file=FILE      Set path to pid file (for daemon mode only)
+  -b,  --base-dir=DIR       Path to installation root (default $opt->{base_dir})
+  -m,  --mib-dir=DIR        Path to mib_dir (default $opt->{mib_dir})
+       --agentx-socket=FILE Path to agentx socket
+
+  -v,  --verbose            Output progress details
+  -h,  --help               Show this help information
+
+EOHELP
+}
+
+if ($opt->{help}) {
+  help;
+  exit 0;
+}
+
+# ------ common functions ----------
+sub unpackMessage {
+  my $shm_message = shift;
+  my $oData = shift;
+  my %shm_data = unpack( 'S/(S/A* S/A*)', $shm_message );
+  if ( keys(%shm_data) == 0 ) {
+      logMessage(LOG_WARNING, "no keys yet;");  
+      return ();
+  }
+  my %typeMap = ( 'GAUGE'=>ASN_GAUGE,'TICKS'=>ASN_TIMETICKS,'INTEGER'=>ASN_INTEGER, 'INTEGER32'=>ASN_INTEGER,'COUNTER64'=>ASN_COUNTER64,'OCTETSTR'=>ASN_OCTET_STR );
+  while ( my($k,$v) = each %shm_data) { 
+    if ( $k !~ /^\./ ) { 
+      # a mib variable with or without index
+      my ( $mvar, $idx ) = split /\./, $k; 
+      if (my $node = $SNMP::MIB{$mvar}) { 
+        $$oData{($node->{'objectID'}) . (defined($idx)?".$idx":'') }->{'V'} = $v;
+        $$oData{($node->{'objectID'}) . (defined($idx)?".$idx":'') }->{'T'} = $typeMap{$node->{'type'}};
+#        logMessage(LOG_DEBUG, "Type $node->{'objectID'} is $node->{'type'} map to $typeMap{$node->{'type'}}" ); 
+      } else {
+        logMessage(LOG_ERR, "$k is not found in a MIB, skipping"); 
+      }
+    } else {
+      # an part of oid with without MIB
+        $$oData{$reg_oid . '.107' . $k}->{'V'} = $v;
+        $$oData{$reg_oid . '.107' . $k}->{'T'} = ASN_OCTET_STR;
+    }
+  }
+  return (sort { new NetSNMP::OID($a)<=>new NetSNMP::OID($b) } ( keys %$oData ) );
+}
+
+sub logMessage {
+  my $level = shift;
+  my $msg = shift;
+  if ( $log_level && $log_level >= $level ) {
+    openlog( "subagent-shell", 'pid', LOG_DAEMON );
+    syslog ( $level, $msg );
+    closelog;
+  }
+  print STDERR "$msg\n" if defined($log_to_console) && $log_to_console != 0;
+}
+
+sub readConfig {
+  $log_level = LOG_INFO;
+  logMessage(LOG_INFO, "Reading config ...");
+  %oDescr=();
+# process the main configuration file
+  open(CONFIG,"${subAgentDir}/subagent-shell.conf") or die;
+  while(<CONFIG>) {
+    chomp;
+    s/ //g;
+    next if ( /^(#|$)/ );
+    my @c=split /=/, $_, 2;
+    die "error $#c" if $#c != 1;
+    if ($c[0] eq 'poller_cycle') {
+      $poller_cycle=$c[1];
+    } elsif ($c[0] eq 'stale_time') {
+      $stale_time=$c[1];
+    } elsif ($c[0] eq 'log_to_console') {
+      $log_to_console=$c[1];
+    } elsif ($c[0] eq 'log_level') {
+      $log_level=$c[1];
+    } elsif ($c[0] eq 'cmd_timeout') {
+      $cmd_timeout=$c[1];
+    } elsif ($c[0] eq 'shm_size') {
+      $shm_size=$c[1];
+    } elsif ($c[0] eq 'cmd_timeout') {
+      $cmd_timeout=$c[1];
+    } elsif ($c[0] eq 'rootMIB') {
+      $agentMib{rootMib}=$c[1];
+    } elsif ($c[0] eq 'functionsCount') {
+      $agentMib{functionsCount}=$c[1];
+    }  elsif ($c[0] eq 'functionsSuccessCount') {
+      $agentMib{functionsSuccessCount}=$c[1];
+    }  elsif ($c[0] eq 'functionsFailedCount') {
+      $agentMib{functionsFailedCount}=$c[1];
+    }  elsif ($c[0] eq 'timeStamp') {
+      $agentMib{timeStamp}=$c[1];
+    }  elsif ($c[0] eq 'totalExecTime') {
+      $agentMib{totalExecTime}=$c[1];
+    }  else {
+      logMessage(LOG_ERR, "unexpected token $c[0] in config file,ignoring");  
+    }  
+  }
+my  %agentMib = ( rootMIB => 'SUBAGENT-SHELL',
+                  functionsCount => 'ssFunctionsCount',
+                  functionsSuccessCount => 'ssFunctionsSuccessCount',
+                  functionsFailedCount => 'ssFunctionsFailedCount',
+                  timeStamp => 'ssTimeStamp',
+                  totalExecTime => 'ssTotalExecTime' );
+  close CONFIG;
+  $reg_oid=$SNMP::MIB{$agentMib{rootMIB}}->{'objectID'};
+
+# do not load functions in the agent
+#  return 0 if $0 !~ 'snmpd-poller$'; 
+
+# load extention functions
+  foreach my $ff ( glob "${subAgentDir}*.functions" ) {
+    logMessage(LOG_DEBUG, "loading functions from  $ff");
+    require "$ff";
+  }
+# process hostname based configuration files
+  my $h = hostname;
+  foreach my $f_config ( (glob "${subAgentDir}subagent-shell-*.conf"), (glob "${subAgentDir}conf.d/${h}*.conf")) {
+    logMessage(LOG_DEBUG, "loading config from  $f_config");
+    open(S_CONFIG,"$f_config") or die;
+    while(<S_CONFIG>) {
+      chomp;
+      s/ //g;
+      next if ( /^(#|$)/ );
+      my @c=split /=/, $_, 2;
+      die "error $#c" if $#c != 1;
+      if ($c[0] eq 'function') { 
+        my @oArg = split /,/, $c[1];
+        my ($bi,$f) = ( shift @oArg, shift @oArg );
+        my $k = pack('d a*', $bi, $f );
+        logMessage( LOG_WARNING, "functions for $bi, $f is already defined, redefining") if defined($oDescr{$k}); 
+        $oDescr{$k}=[@oArg];
+      }     
+    }
+    close S_CONFIG;
+  }
+}
+
+sub pollerInfo {
+  my $o=shift;
+  my $f=shift;
+  my $s=shift;
+  $$f{$agentMib{totalExecTime}} = scalar gettimeofday - $s;
+  while ( my($k,$v) = each  %$f ){ $$o{$k}=$v; }
+  return 0;
+} 
+
+sub pollerHandler {
+  my ($handler, $registration_info, $request_info, $requests) = @_;
+
+  sub oidToString {
+    my $oid=shift;
+    return "." . join (".", $oid->to_array());
+  }
+  sub unpackOData {
+    my $r = shift;
+    return ( defined($$r{'T'})?$$r{'T'}:ASN_OCTET_STR, $$r{'V'} );
+  }
+
+  my %oData;
+  my @sortedoids;
+  my $shm_message;
+
+  semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
+  unless (shmread($shm_id, $shm_message, 0, $shm_size-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
+  semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
+#  substr($shm_message, index($shm_message, "\0"))='';
+  logMessage(LOG_DEBUG, "read message:  <$shm_message>, length " . length($shm_message) ); 
+#read and unpack
+  @sortedoids = unpackMessage( $shm_message, \%oData );
+  return if ($#sortedoids < 0 );
+#
+  foreach my $k(@sortedoids) {
+    logMessage(LOG_DEBUG, "sorted oids $k -> $oData{$k}") ;
+  }
+  for(my $request = $requests; $request; $request = $request->next()) {
+    my $oid = $request->getOID();
+    logMessage(LOG_DEBUG, "Requested: $oid" ); 
+    if ( $request_info->getMode() == MODE_GET ) {
+      my $soid=oidToString($oid); 
+      logMessage(LOG_DEBUG, "MODE: GET $soid"); 
+      if ( defined ( $oData{"$soid"} )) {
+        $request->setValue(unpackOData($oData{$soid}));
+      } 
+    } elsif ( $request_info->getMode() == MODE_GETNEXT ) {
+      logMessage(LOG_DEBUG, "MODE: GETNEXT, requested $oid"); 
+      my $oididx=0;
+      foreach (@sortedoids) { last if (new NetSNMP::OID($_) == $oid); $oididx++; }
+      if ( $oid < new NetSNMP::OID($sortedoids[0]) ) {
+        $request->setOID(new NetSNMP::OID($sortedoids[0]));
+        $request->setValue(unpackOData($oData{$sortedoids[0]}));
+      } elsif ( defined($sortedoids[$oididx+1]) && defined($oData{$sortedoids[$oididx+1]}) ) {
+        $request->setOID(new NetSNMP::OID($sortedoids[$oididx+1]));
+        $request->setValue(unpackOData($oData{$sortedoids[$oididx+1]}));
+      } elsif (!defined( $oData{oidToString($oid)})) {
+        logMessage(LOG_DEBUG, "LAST CHANCE requested $oid"); 
+        my @nsoids=sort {new NetSNMP::OID($a)<=>new NetSNMP::OID($b)} (@sortedoids, oidToString($oid));
+        $oididx=0;
+        foreach (@nsoids) { last if (new NetSNMP::OID($_) == $oid); $oididx++; }
+        if ( defined($nsoids[$oididx+1]) && defined($oData{$nsoids[$oididx+1]}) ) {
+          $request->setOID(new NetSNMP::OID($nsoids[$oididx+1]));
+          $request->setValue(unpackOData($oData{$nsoids[$oididx+1]}));
+        }
+      }
+    }
+  }
+}
+
+sub daemonize {
+  my $pid = fork();
+  if (! defined $pid) { die "fork failed: $!"; }
+  if ($pid != 0) {
+    exit 0;
+  }
+
+  POSIX::setsid();
+
+  if ($opt->{pid_file}) {
+    open PIDFILE, ">", $opt->{pid_file} or die "Can't open pid-file $opt->{pid_file}: $!";
+    print PIDFILE "$$\n";
+    close PIDFILE;
+    $remove_pid_file = $opt->{pid_file};
+  }
+
+  open STDIN, "</dev/null" or die "Can't dup STDIN: $!";
+  open STDOUT, ">/dev/null" or die "Can't dup STDOUT: $!";
+  open STDERR, ">/dev/null" or die "Can't dup STDERR: $!";
+}
+
+
+# ===== main =====
+{
+  my $amode = ($0=~'snmp_perl.pl')?0:1;
+  if ( $opt->{daemon} ) {
+    logMessage(LOG_WARNING, "can't become daemon in subagent mode") if ( $amode == 0 );
+    daemonize();
+  } 
+  if ( $amode == 1 ) {
+    $SIG{INT} = sub {
+      $running = 0;
+      logMessage(LOG_INFO, "Interrupted by user.");
+    };
+    $SIG{TERM} = sub {
+      $running = 0;
+      logMessage(LOG_INFO, "Terminated by user.");
+    };
+    $SIG{HUP} = sub {
+      readConfig();
+      logMessage(LOG_INFO, "Received HUP, reloading configuration.");
+    };
+  }
+  my $agent = new NetSNMP::agent('Name' => "subagent-shell", 'AgentX' => $amode  );
+  SNMP::initMib(); # parses default list of Mib modules from default dirs
+  SNMP::addMibDirs("$mibDir");
+  SNMP::loadModules("ALL");
+  readConfig();
+
+  unless (defined($shm_id=shmget(IPC_PRIVATE, $shm_size, S_IRWXU)))   { logMessage(LOG_ERR, "can't shmget $!"); exit 1; }
+  unless (defined($sem_id=semget($shm_id, 1, IPC_CREAT | 0700)))      { logMessage(LOG_ERR, "can't semctl $!"); exit 1; }
+  unless (socketpair(CHILD, PARENT, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) { logMessage(LOG_ERR, "can't make sockepair $!"); exit 1; };
+  my $pid;
+  if ($pid = fork) {
+# ===== parent ======
+    close PARENT;
+    unless ($agent)   { logMessage (LOG_ERR, 'Agent is not initialized'); exit 1; }
+    unless ($reg_oid) { logMessage (LOG_ERR, 'Root OID is not configured'); exit 1; }
+    unless ( $agent->register("subagent-shell", new NetSNMP::OID($reg_oid), \&pollerHandler ))
+            { logMessage (LOG_ERR, 'failed to register agent'); exit 1; }
+    logMessage (LOG_INFO, 'AgentX is initialized in ' . ($amode==0?'subagent':'standalone') . ' mode' ); 
+    if ( $amode == 1) {
+      while($running) {
+        $agent->agent_check_and_process(1);
+      } 
+      $agent->shutdown();
+    }
+  } else { 
+  # ===== child =====
+    close CHILD;
+    unless ( defined( $pid ) )      { logMessage(LOG_ERR, "cannot fork: $!"); exit 1; }
+    unless (open STDIN, ">&PARENT") { logMessage(LOG_ERR, "can't dup STDIN $!"); exit 1; }
+    close PARENT;
+    my %otree = (); 
+    my %fStatus = (); 
+    my $start_time;
+    my $shm_message;
+    no strict "refs";
+
+    logMessage(LOG_INFO, "Starting poller");
+
+    while (1) { 
+      logMessage(LOG_DEBUG, "polling with $poller_cycle s interval");
+      %fStatus = ($agentMib{functionsCount}=>0, 
+                  $agentMib{functionsSuccessCount}=>0, 
+                  $agentMib{functionsFailedCount}=>0, 
+                  $agentMib{timeStamp}=>strftime('%d-%b-%Y %H:%M',localtime), 
+                  $agentMib{totalExecTime}=>$0);
+      %otree = (); 
+      my $s_time = scalar gettimeofday();
+      foreach my $i (keys %oDescr) {
+        my ($bi, $func) = unpack('d a*', $i);
+        $fStatus{$agentMib{functionsCount}} += 1;  
+        if ( &$func( $bi, \%otree, @{$oDescr{$i}} ) == 0 ) { 
+          $fStatus{$agentMib{functionsSuccessCount}} += 1;
+        } else {
+          $fStatus{$agentMib{functionsFailedCount}} += 1;
+        } 
+      }
+  #   add pollerInfo
+      pollerInfo(\%otree,\%fStatus,$s_time);
+      $shm_message = pack( 'S(S/A* S/A*)*', scalar keys( %otree ), %otree );
+  #    while (my ($k,$v) = each %otree) { logMessage(LOG_DEBUG, "otree: $k => $v" );}
+
+      my %oData;
+        my @sortedoids = unpackMessage( $shm_message, \%oData );
+        foreach my $o (@sortedoids) {
+          my ( $t, $v ) = unpackOData($oData{$o});
+          logMessage(LOG_DEBUG, "otree: $o = $t , $v" );
+        }
+      semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
+      unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
+      semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
+
+      my ($rin, $rout)  = ('', '');
+      vec($rin, fileno(STDIN), 1) = 1;
+      my ($nfound, $timeleft) = select($rout=$rin, undef, undef, $poller_cycle);
+      if ( ($nfound == 1 ) ) {
+          shmctl($shm_id, IPC_RMID, 0);
+          semctl($sem_id, 0, IPC_RMID, 0);
+          logMessage(LOG_INFO, "Connection with agent lost, code=$nfound, shutting down");
+          exit; 
+      }
+    }
+  }
+}

@@ -11,39 +11,46 @@ SUBAGENT-SHELL MODULE-IDENTITY
   DESCRIPTION "SNMP SUBAGENT SHELL MIB"
   ::= { enterprises 777 }
   
-  pollerInfo OBJECT IDENTIFIER ::= { SUBAGENT-SHELL 1 }
-  functionsEntry OBJECT IDENTIFIER ::= { SUBAGENT-SHELL 107 }
+  ssPollerInfo OBJECT IDENTIFIER ::= { SUBAGENT-SHELL 1 }
+  functionsEntry OBJECT IDENTIFIER ::= { SUBAGENT-SHELL 100 }
 
-  functionsCount  OBJECT-TYPE
+  ssFunctionsCount  OBJECT-TYPE
     SYNTAX      INTEGER
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
         "Number of executed functions"
-    ::= { pollerInfo 1 }
+    ::= { ssPollerInfo 1 }
 
-  functionsSuccessCount  OBJECT-TYPE
+  ssFunctionsSuccessCount  OBJECT-TYPE
     SYNTAX      INTEGER
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
         "Number of successfully executed functions"
-    ::= { pollerInfo 2 }
+    ::= { ssPollerInfo 2 }
 
-  functionsFailedCount  OBJECT-TYPE
+  ssFunctionsFailedCount  OBJECT-TYPE
     SYNTAX      INTEGER
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
         "Number of failed functions"
-    ::= { pollerInfo 3 }
+    ::= { ssPollerInfo 3 }
 
-  timeStamp  OBJECT-TYPE
-    SYNTAX      TimeStamp
+  ssTimeStamp  OBJECT-TYPE
+    SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
         "Timestamp of last execution"
-    ::= { pollerInfo 4 }
+    ::= { ssPollerInfo 4 }
  
-  totalExecTime  OBJECT-TYPE
+  ssTotalExecTime  OBJECT-TYPE
+    SYNTAX      TimeStamp
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Total execution time"
+    ::= { ssPollerInfo 5 }
+END
