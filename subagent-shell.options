@@ -1,1 +1,1 @@
-$OPTIONS="-d -p /var/run/subagent-shell.pid"
+# OPTIONS="-d -p /var/run/subagent-shell.pid"
