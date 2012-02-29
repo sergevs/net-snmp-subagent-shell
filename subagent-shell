@@ -32,7 +32,7 @@ my $opt = {
   daemon => 0,
   pid_file => "",
   base_dir => '/etc/snmp/subagent/',
-  mib_dir => '/etc/snmp/subagent/mibs/',
+  mib_dir => '',
   agentx_socket => "",
   verbose => 0,
   help => 0,
@@ -54,6 +54,8 @@ Getopt::Long::GetOptions(
 our ( $subAgentDir,$mibDir ); 
 $subAgentDir = $opt->{base_dir}  if !defined($subAgentDir);
 $mibDir = $opt->{mib_dir}  if !defined($mibDir);
+$mibDir = "$subAgentDir/mibs" if ( ! "$opt->{mib_dir}" );
+print "$subAgentDir $mibDir\n";
 
 sub help {
   print <<EOHELP;
@@ -160,12 +162,6 @@ sub readConfig {
       logMessage(LOG_ERR, "unexpected token $c[0] in config file,ignoring");  
     }  
   }
-my  %agentMib = ( rootMIB => 'SUBAGENT-SHELL',
-                  functionsCount => 'ssFunctionsCount',
-                  functionsSuccessCount => 'ssFunctionsSuccessCount',
-                  functionsFailedCount => 'ssFunctionsFailedCount',
-                  timeStamp => 'ssTimeStamp',
-                  totalExecTime => 'ssTotalExecTime' );
   close CONFIG;
   $reg_oid=$SNMP::MIB{$agentMib{rootMIB}}->{'objectID'};
 

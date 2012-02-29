@@ -11,3 +11,32 @@ SUBAGENT-SHELL-NTP-SYNCSTATUS MODULE-IDENTITY
   CONTACT-INFO "abrikus@gmail.com"
   DESCRIPTION "SNMP SUBAGENT SHELL Ntp server synchronization status status MIB"
   ::= { functionsEntry 2 }
+
+  ntpSyncStatus OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Time difference with a network ntp serverStatus url."
+    ::= { SUBAGENT-SHELL-NTP-SYNCSTATUS 1 }
+
+  ntpSyncServer OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-NTP-SYNCSTATUS 2 }
+
+  ntpSyncFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-NTP-SYNCSTATUS 3 }
+
+  ntpSyncExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-NTP-SYNCSTATUS 4 }
+END

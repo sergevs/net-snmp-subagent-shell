@@ -60,6 +60,26 @@ sub apacheStatusMIB {
   return  $r;
 }
 
+sub ntpSyncMIB {
+  my $base=shift;
+  my $o=shift;
+  my $nsrv=shift;
+  my $t=gettimeofday();
+  my $cmd="/usr/sbin/ntpdate -t $cmd_timeout -q4 $nsrv";
+  my $v;
+
+  foreach (`$cmd`) {
+    chomp;
+    $v=(split )[9] if ( /time server/ );
+  }
+  my $r = $? >> 8;
+  $$o{'ntpSyncStatus'} = $v;
+  $$o{'ntpSyncServer'} = $nsrv;
+  $$o{'ntpSyncFuncExecTime'} = gettimeofday()-$t;
+  $$o{'ntpSyncExecStatus'} = $r;
+  return $r;
+}
+
 sub monitorNtp {
   my $base=shift;$base = ".$base";
   my $o=shift;
