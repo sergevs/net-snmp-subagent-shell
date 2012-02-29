@@ -55,7 +55,6 @@ our ( $subAgentDir,$mibDir );
 $subAgentDir = $opt->{base_dir}  if !defined($subAgentDir);
 $mibDir = $opt->{mib_dir}  if !defined($mibDir);
 $mibDir = "$subAgentDir/mibs" if ( ! "$opt->{mib_dir}" );
-print "$subAgentDir $mibDir\n";
 
 sub help {
   print <<EOHELP;
