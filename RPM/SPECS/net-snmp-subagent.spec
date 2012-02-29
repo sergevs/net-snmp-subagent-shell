@@ -22,21 +22,25 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 cd snmpd-agent 
 %__mkdir_p %buildroot%_bindir
 %__mkdir_p %buildroot%_sysconfdir/init.d
+%__mkdir_p %buildroot%_sysconfdir/sysconfig
 %__mkdir_p %buildroot/etc/snmp/subagent/{conf.d,mibs}
 %__install subagent-shell %buildroot%_bindir
 %__install subagent-shell{.conf,-base.functions,-functions.conf} %buildroot/etc/snmp/subagent
 %__install mibs/* %buildroot/etc/snmp/subagent/mibs
 %__install subagent-shell.init %buildroot%_sysconfdir/init.d/subagent-shell
+%__install subagent-shell.options %buildroot%_sysconfdir/sysconfig
 
 %files
-%attr(755,root,root) %_bindir/*
-%attr(755,root,root) %dir /etc/snmp/subagent
-%attr(755,root,root) %dir /etc/snmp/subagent/mibs
-%attr(755,root,root) %dir /etc/snmp/subagent/conf.d
-%attr(755,root,root) /etc/snmp/subagent/mibs/*
-%attr(444,root,root) /etc/snmp/subagent/*.functions
+%defattr(-,root,root)
+%_bindir/*
+%dir /etc/snmp/subagent
+%dir /etc/snmp/subagent/mibs
+%dir /etc/snmp/subagent/conf.d
+/etc/snmp/subagent/mibs/*
+/etc/snmp/subagent/*.functions
 %config(noreplace) %attr(444,root,root) /etc/snmp/subagent/*.conf
-%attr(755,root,root) %_sysconfdir/init.d/subagent-shell
+%_sysconfdir/init.d/subagent-shell
+%_sysconfdir/sysconfig/subagent-shell.options
 
 %post
 /sbin/chkconfig --add subagent-shell

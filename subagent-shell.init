@@ -11,13 +11,13 @@
 
 # Sanity checks.
 [ -x /usr/bin/subagent-shell ] || exit 0
-
+[ -f /etc/sysconfig/subagent-shell.options ] && source /etc/sysconfig/subagent-shell.options
 RETVAL=0
 source /etc/rc.d/init.d/functions
 
 start() {
     echo -n $"Starting snmp subagent shell daemon: "
-    /usr/bin/subagent-shell -d -p /var/run/subagent-shell.pid
+    /usr/bin/subagent-shell $OPTIONS
     RETVAL=$?
     echo
 }
