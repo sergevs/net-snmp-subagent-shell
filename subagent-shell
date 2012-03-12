@@ -5,6 +5,8 @@ use warnings;
 use Sys::Syslog qw(:standard :macros);
 use Sys::Hostname;
 use NetSNMP::agent (':all');
+use NetSNMP::default_store (':all');
+use NetSNMP::agent::default_store (':all');
 use NetSNMP::ASN qw(:all);
 use NetSNMP::OID (':all');
 use SNMP;
@@ -30,10 +32,10 @@ my  %agentMib = ( rootMIB => 'SUBAGENT-SHELL',
 
 my $opt = {
   daemon => 0,
-  pid_file => "",
+  pid_file => '',
   base_dir => '/etc/snmp/subagent/',
   mib_dir => '',
-  agentx_socket => "",
+  agentx_socket => '',
   verbose => 0,
   help => 0,
 };
@@ -52,9 +54,18 @@ Getopt::Long::GetOptions(
 );
 
 our ( $subAgentDir,$mibDir ); 
-$subAgentDir = $opt->{base_dir}  if !defined($subAgentDir);
-$mibDir = $opt->{mib_dir}  if !defined($mibDir);
-$mibDir = "$subAgentDir/mibs" if ( ! "$opt->{mib_dir}" );
+
+$subAgentDir = $opt->{base_dir}  unless defined($subAgentDir);
+$subAgentDir = "${subAgentDir}/" unless $subAgentDir =~ /\/$/;
+if ( !defined($mibDir) ) {
+  if ( $opt->{mib_dir} eq '' ) {
+    $mibDir = "${subAgentDir}mibs/";
+  } else { 
+    $mibDir = $opt->{mib_dir};
+  } 
+} 
+
+$log_to_console = 1 if $opt->{verbose};
 
 sub help {
   print <<EOHELP;
@@ -124,7 +135,7 @@ sub readConfig {
   logMessage(LOG_INFO, "Reading config ...");
   %oDescr=();
 # process the main configuration file
-  open(CONFIG,"${subAgentDir}/subagent-shell.conf") or die;
+  open(CONFIG,"${subAgentDir}subagent-shell.conf") or die;
   while(<CONFIG>) {
     chomp;
     s/ //g;
@@ -146,7 +157,7 @@ sub readConfig {
     } elsif ($c[0] eq 'cmd_timeout') {
       $cmd_timeout=$c[1];
     } elsif ($c[0] eq 'rootMIB') {
-      $agentMib{rootMib}=$c[1];
+      $agentMib{rootMIB}=$c[1];
     } elsif ($c[0] eq 'functionsCount') {
       $agentMib{functionsCount}=$c[1];
     }  elsif ($c[0] eq 'functionsSuccessCount') {
@@ -309,6 +320,10 @@ sub daemonize {
     };
   }
   my $agent = new NetSNMP::agent('Name' => "subagent-shell", 'AgentX' => $amode  );
+  if ($opt->{agentx_socket} ne '' && $opt->{agentx_socket} ne '-') {
+    netsnmp_ds_set_string(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_X_SOCKET, $opt->{agentx_socket});
+    logMessage (LOG_INFO, "AgentX socket set to $opt->{agentx_socket}");
+  }
   SNMP::initMib(); # parses default list of Mib modules from default dirs
   SNMP::addMibDirs("$mibDir");
   SNMP::loadModules("ALL");
