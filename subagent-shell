@@ -54,6 +54,7 @@ Getopt::Long::GetOptions(
 );
 
 our ( $subAgentDir,$mibDir ); 
+
 $subAgentDir = $opt->{base_dir}  unless defined($subAgentDir);
 $subAgentDir = "${subAgentDir}/" unless $subAgentDir =~ /\/$/;
 if ( !defined($mibDir) ) {
@@ -63,6 +64,8 @@ if ( !defined($mibDir) ) {
     $mibDir = $opt->{mib_dir};
   } 
 } 
+
+$log_to_console = 1 if $opt->{verbose};
 
 sub help {
   print <<EOHELP;
