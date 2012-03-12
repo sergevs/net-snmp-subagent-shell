@@ -58,7 +58,7 @@ $subAgentDir = $opt->{base_dir}  unless defined($subAgentDir);
 $subAgentDir = "${subAgentDir}/" unless $subAgentDir =~ /\/$/;
 if ( !defined($mibDir) ) {
   if ( $opt->{mib_dir} eq '' ) {
-    $mibDir = "${subAgentDir}mibs";
+    $mibDir = "${subAgentDir}mibs/";
   } else { 
     $mibDir = $opt->{mib_dir};
   } 
@@ -154,7 +154,7 @@ sub readConfig {
     } elsif ($c[0] eq 'cmd_timeout') {
       $cmd_timeout=$c[1];
     } elsif ($c[0] eq 'rootMIB') {
-      $agentMib{rootMib}=$c[1];
+      $agentMib{rootMIB}=$c[1];
     } elsif ($c[0] eq 'functionsCount') {
       $agentMib{functionsCount}=$c[1];
     }  elsif ($c[0] eq 'functionsSuccessCount') {
