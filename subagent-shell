@@ -102,7 +102,7 @@ sub unpackMessage {
   while ( my($k,$v) = each %shm_data) { 
     if ( $k !~ /^\./ ) { 
       # a mib variable with or without index
-      my ( $mvar, $idx ) = split /\./, $k; 
+      my ( $mvar, $idx ) = split /\./, $k, 2; 
       if (my $node = $SNMP::MIB{$mvar}) { 
         $$oData{($node->{'objectID'}) . (defined($idx)?".$idx":'') }->{'V'} = $v;
         $$oData{($node->{'objectID'}) . (defined($idx)?".$idx":'') }->{'T'} = $typeMap{$node->{'type'}};
@@ -197,7 +197,7 @@ sub readConfig {
       if ($c[0] eq 'function') { 
         my @oArg = split /,/, $c[1];
         my ($bi,$f) = ( shift @oArg, shift @oArg );
-        my $k = pack('d a*', $bi, $f );
+        my $k = pack('S/a* S/a*', $bi, $f );
         logMessage( LOG_WARNING, "functions for $bi, $f is already defined, redefining") if defined($oDescr{$k}); 
         $oDescr{$k}=[@oArg];
       }     
@@ -367,11 +367,11 @@ sub daemonize {
                   $agentMib{functionsSuccessCount}=>0, 
                   $agentMib{functionsFailedCount}=>0, 
                   $agentMib{timeStamp}=>strftime('%d-%b-%Y %H:%M',localtime), 
-                  $agentMib{totalExecTime}=>$0);
+                  $agentMib{totalExecTime}=>0);
       %otree = (); 
       my $s_time = scalar gettimeofday();
       foreach my $i (keys %oDescr) {
-        my ($bi, $func) = unpack('d a*', $i);
+        my ($bi, $func) = unpack('S/a* S/a*', $i);
         $fStatus{$agentMib{functionsCount}} += 1;  
         if ( &$func( $bi, \%otree, @{$oDescr{$i}} ) == 0 ) { 
           $fStatus{$agentMib{functionsSuccessCount}} += 1;
