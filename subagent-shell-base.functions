@@ -1,3 +1,23 @@
+# old style function
+sub monitorNtp {
+  my $base=shift;$base = ".$base";
+  my $o=shift;
+  my $nsrv=shift;
+  my $t=gettimeofday();
+  my $cmd="/usr/sbin/ntpdate -t $cmd_timeout -q4 $nsrv";
+  my $v;
+
+  foreach (`$cmd`) {
+    chomp;
+    $v=(split )[9] if ( /time server/ );
+  }
+  my $r = $? >> 8;
+  $$o{$base. '.1.1'} = $v;
+  $$o{$base. '.2.1'} = $cmd;
+  $$o{$base. '.2.2'} = gettimeofday()-$t;
+  $$o{$base. '.2.3'} = $r;
+  return $r;
+}
 # apache httpd mod_status dashboard
 
 #Total Accesses: 58760
@@ -73,30 +93,59 @@ sub ntpSyncMIB {
     $v=(split )[9] if ( /time server/ );
   }
   my $r = $? >> 8;
-  $$o{'ntpSyncStatus'} = $v;
+  $$o{'ntpSyncStatus'} = sprintf('%.3f', $v);
   $$o{'ntpSyncServer'} = $nsrv;
-  $$o{'ntpSyncFuncExecTime'} = gettimeofday()-$t;
+  $$o{'ntpSyncFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'ntpSyncExecStatus'} = $r;
   return $r;
 }
 
-sub monitorNtp {
-  my $base=shift;$base = ".$base";
+sub procCountMIB {
+  my $base=shift;
   my $o=shift;
-  my $nsrv=shift;
   my $t=gettimeofday();
-  my $cmd="/usr/sbin/ntpdate -t $cmd_timeout -q4 $nsrv";
-  my $v;
+  my $cmd='top -b -n1 | awk \'/^Tasks/{print $2 " " $4 " " $6 " " $8 " " $10}\'';
+  my ($total, $running, $sleeping, $stopped, $zombie);
 
   foreach (`$cmd`) {
     chomp;
-    $v=(split )[9] if ( /time server/ );
+    ($total, $running, $sleeping, $stopped, $zombie)=split;
   }
   my $r = $? >> 8;
-  $$o{$base. '.1.1'} = $v;
-  $$o{$base. '.2.1'} = $cmd;
-  $$o{$base. '.2.2'} = gettimeofday()-$t;
-  $$o{$base. '.2.3'} = $r;
+  $$o{'procTotal'} = $total;
+  $$o{'procRunning'} = $running;
+  $$o{'procSleeping'} = $sleeping;
+  $$o{'procStopped'} = $stopped;
+  $$o{'procZombie'} = $zombie;
+  $$o{'procFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'procExecStatus'} = $r;
+  return $r;
+}
+  
+sub ip_conntrackMIB {
+  my $base=shift;
+  my $o=shift;
+  my $t=gettimeofday();
+  my $cmd="cat /proc/sys/net/ipv4/netfilter/ip_conntrack_count /proc/sys/net/ipv4/ip_conntrack_max | tr '\n' ' '";
+  my ($loaded,$count, $max, $r);
+
+  $loaded=(-f "/proc/sys/net/ipv4/ip_conntrack_max")?1:0;
+  if ( $loaded ) {
+    foreach (`$cmd`) {
+      chomp;
+      ($count, $max)=split;
+    }
+    $r = $? >> 8;
+  } else {
+    $count = 0;
+    $max = 0;
+    $r = 0;
+  }
+  $$o{'ip-conntrackLoaded'} = $loaded;
+  $$o{'ip-conntrackCount'} = $count;
+  $$o{'ip-conntrackMax'} = $max;
+  $$o{'ip-conntrackFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'ip-conntrackExecStatus'} = $r;
   return $r;
 }
 
