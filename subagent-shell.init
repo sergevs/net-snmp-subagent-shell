@@ -13,22 +13,37 @@
 [ -x /usr/bin/subagent-shell ] || exit 0
 [ -f /etc/sysconfig/subagent-shell.options ] && source /etc/sysconfig/subagent-shell.options
 RETVAL=0
-source /etc/rc.d/init.d/functions
+source /etc/init.d/functions
 
 start() {
     echo -n $"Starting snmp subagent shell daemon: "
     [ -z "$OPTIONS" ] && OPTIONS="-d -p /var/run/subagent-shell.pid"
     daemon /usr/bin/subagent-shell $OPTIONS
     RETVAL=$?
+    [ $RETVAL -eq 0 ] && touch /var/lock/subsys/subagent-shell
     echo
+    return $RETVAL
 }
 
 stop() {
     echo -n $"Stopping snmp subagent shell daemon: "
     killproc /usr/sbin/subagent-shell
     RETVAL=$?
+    [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/subagent-shell
     echo
+    return $RETVAL
 }
+
+restart(){
+	stop
+	start
+}
+
+condrestart(){
+    [ -e /var/lock/subsys/subagent-shell ] && restart
+    return 0
+}
+
 
 case "$1" in
     start)
@@ -42,19 +57,17 @@ case "$1" in
         RETVAL=$?
         ;;
     restart)
-        stop
-        start
+        restart
         ;;
     condrestart)
-        stop
-        start
+        condrestart
         ;;
     reload)
-        echo "Subagent-shell can't reload its configuration, you have to restart it"
+        echo "Subagent-shell does not support configuration reload you have to restart it"
         RETVAL=$?
         ;;
     *)
-        echo $"Usage: $0 {start|stop|status|restart|condrestart|reload}"
+        echo $"Usage: $0 {start|stop|status|restart|condrestart}"
         ;;
 esac
 exit $RETVAL
