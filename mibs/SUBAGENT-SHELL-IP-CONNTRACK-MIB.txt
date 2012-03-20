@@ -1,0 +1,52 @@
+SUBAGENT-SHELL-IP-CONNTRACK-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-IP-CONNTRACK MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL Netfilter ip conntrack statistics MIB"
+  ::= { functionsEntry 4 }
+
+  ip-conntrackLoaded OBJECT-TYPE
+    SYNTAX  INTEGER {
+                false(0),
+                true(1)
+            }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Netfilter modules loaded."
+    ::= { SUBAGENT-SHELL-IP-CONNTRACK 1 }
+
+  ip-conntrackCount OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of ip conntrack sessions."
+    ::= { SUBAGENT-SHELL-IP-CONNTRACK 2 }
+
+  ip-conntrackMax OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Max number of ip conntrack sessions."
+   ::= { SUBAGENT-SHELL-IP-CONNTRACK 3 }
+
+  ip-conntrackFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-IP-CONNTRACK 4 }
+
+  ip-conntrackExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-IP-CONNTRACK 5 }
+END

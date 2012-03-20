@@ -9,7 +9,7 @@ SUBAGENT-SHELL-NTP-SYNCSTATUS MODULE-IDENTITY
   LAST-UPDATED "200906251500Z"
   ORGANIZATION "Noname, Inc."
   CONTACT-INFO "abrikus@gmail.com"
-  DESCRIPTION "SNMP SUBAGENT SHELL Ntp server synchronization status status MIB"
+  DESCRIPTION "SNMP SUBAGENT SHELL Ntp server synchronization status MIB"
   ::= { functionsEntry 2 }
 
   ntpSyncStatus OBJECT-TYPE
