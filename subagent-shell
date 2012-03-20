@@ -210,7 +210,7 @@ sub pollerInfo {
   my $o=shift;
   my $f=shift;
   my $s=shift;
-  $$f{$agentMib{totalExecTime}} = scalar gettimeofday - $s;
+  $$f{$agentMib{totalExecTime}} = sprintf('%.3f', scalar gettimeofday() - $s);
   while ( my($k,$v) = each  %$f ){ $$o{$k}=$v; }
   return 0;
 } 

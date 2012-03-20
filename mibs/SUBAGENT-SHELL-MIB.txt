@@ -47,7 +47,7 @@ SUBAGENT-SHELL MODULE-IDENTITY
     ::= { ssPollerInfo 4 }
  
   ssTotalExecTime  OBJECT-TYPE
-    SYNTAX      TimeStamp
+    SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION
