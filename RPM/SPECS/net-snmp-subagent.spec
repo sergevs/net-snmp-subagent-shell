@@ -48,6 +48,7 @@ grep -P '^perl do.*/etc/snmp/subagent/snmpd-poller-agent' /etc/snmp/snmpd.conf
 if [ $? == 0 ]; then
   sed -i -e 's!^\(perl do "/etc/snmp/subagent/snmpd-poller-agent\)!#\1!' /etc/snmp/snmpd.conf
   /sbin/service snmpd condrestart >/dev/null 2>&1 || :
+  /sbin/service subagent-shell start >/dev/null 2>&1 || :
 fi
 if [ "$1" -ge "1" ]; then
   /sbin/service subagent-shell condrestart >/dev/null 2>&1 || :
