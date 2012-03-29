@@ -1,4 +1,8 @@
+use strict;
+use warnings;
 # old style function
+our $cmd_timeout;
+
 sub monitorNtp {
   my $base=shift;$base = ".$base";
   my $o=shift;
@@ -38,45 +42,53 @@ sub monitorNtp {
 #   "D" DNS Lookup, 
 
 sub apacheStatusMIB {
-  my $i=shift;$i = ".$i";
+  my $i=shift;$i = 1; # i is unused
   my $o=shift;
-  my $url=shift;
+  my @urls=@_;
   my $t=gettimeofday();
-  my $cmd="curl -s -m $cmd_timeout $url";
+  my $cmd="curl -s -m $cmd_timeout ";
+  my $r=0;
 
-  foreach (`$cmd`) {
-    chomp;
-    my $s=$_;
-    if ( /Scoreboard/ ) {
-      $$o{'apsWaitingForConnection' . $i}=$s=~tr/_/_/; 
-      $$o{'apsSendingReply' . $i}=$s=~tr/W/W/; 
-      $$o{'apsReadingRequest' . $i}=$s=~tr/R/R/; 
-      $$o{'apsKeepAlive' . $i}=$s=~tr/K/K/; 
-      $$o{'apsDNSLookup' . $i}=$s=~tr/D/D/; 
-    } elsif ( /^Total Accesses/ ) {
-      $$o{'apsTotalAccesses' . $i} = ( split /: /, $s )[1];
-    } elsif ( /^CPULoad/ ) {
-      $$o{'apsCpuLoad' . $i} = ( split /: /, $s )[1];
-    } elsif ( /^Uptime/ ) {
-      $$o{'apsUptime' . $i} = ( split /: /, $s )[1];
-    } elsif ( /^BusyWorkers/ ) {
-      $$o{'apsBusyWorkers' . $i} = ( split /: /, $s )[1];
-    } elsif ( /^IdleWorkers/ ) {
-      $$o{'apsIdleWorkers' . $i} = ( split /: /, $s )[1];
-    } elsif ( /^ReqPerSec/ ) {
-      $$o{'apsReqPersSec' . $i} = ( split /: /, $s )[1];
-    } elsif ( /^BytesPerSec/ ) {
-      $$o{'apsBytesPerSec' . $i} = ( split /: /, $s )[1];
-    } elsif ( /^BytesPerReq/ ) {
-      $$o{'apsBytesPerReq' . $i} = ( split /: /, $s )[1];
+  foreach my $u (@urls) {
+    my $ts=gettimeofday();
+    print "$cmd $u\n";
+    foreach (`$cmd $u`) {
+      chomp;
+      my $s=$_;
+      if ( /Scoreboard/ ) {
+        $$o{'apsWaitingForConnection' . ".$i"}=$s=~tr/_/_/; 
+        $$o{'apsSendingReply' . ".$i"}=$s=~tr/W/W/; 
+        $$o{'apsReadingRequest' . ".$i"}=$s=~tr/R/R/; 
+        $$o{'apsKeepAlive' . ".$i"}=$s=~tr/K/K/; 
+        $$o{'apsDNSLookup' . ".$i"}=$s=~tr/D/D/; 
+      } elsif ( /^Total Accesses/ ) {
+        $$o{'apsTotalAccesses' . ".$i"} = ( split /: /, $s )[1];
+      } elsif ( /^CPULoad/ ) {
+        $$o{'apsCpuLoad' . ".$i"} = ( split /: /, $s )[1];
+      } elsif ( /^Uptime/ ) {
+        $$o{'apsUptime' . ".$i"} = ( split /: /, $s )[1];
+      } elsif ( /^BusyWorkers/ ) {
+        $$o{'apsBusyWorkers' . ".$i"} = ( split /: /, $s )[1];
+      } elsif ( /^IdleWorkers/ ) {
+        $$o{'apsIdleWorkers' . ".$i"} = ( split /: /, $s )[1];
+      } elsif ( /^ReqPerSec/ ) {
+        $$o{'apsReqPersSec' . ".$i"} = ( split /: /, $s )[1];
+      } elsif ( /^BytesPerSec/ ) {
+        $$o{'apsBytesPerSec' . ".$i"} = ( split /: /, $s )[1];
+      } elsif ( /^BytesPerReq/ ) {
+        $$o{'apsBytesPerReq' . ".$i"} = ( split /: /, $s )[1];
+      }
     }
+    my $cmd_r = $? >> 8;
+    $$o{'apsIndex' . ".$i"} = $i;
+    $$o{'apsCmdExecTime' . ".$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{'apsCmdExecStatus' . ".$i"} = $cmd_r;
+    $$o{'apsUrl' . ".$i"} = $u;
+    $r = $cmd_r if $cmd_r;
+    $i++;
   }
-  my $r = $? >> 8;
-  $$o{'apsIndex' . $i} = $i;
-  $$o{'apsIndex' . $i} =~s/\.//;
-  $$o{'apsFuncExecTime' . $i} = sprintf('%.3f',scalar gettimeofday() - $t);
-  $$o{'apsFuncExecStatus' . $i} = $r;
-  $$o{'apsUrl' . $i} = $url;
+  $$o{'apsFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'apsFuncExecStatus'} = $r;
   return  $r;
 }
 
@@ -149,4 +161,35 @@ sub ip_conntrackMIB {
   return $r;
 }
 
+sub dnsLookUpMIB {
+  my $i=shift; $i=1; #parameter is unused
+  my $o=shift;
+  my @hosts=@_;
+  my $t=gettimeofday();
+  my $cmd="/usr/bin/host -W $cmd_timeout";
+  my $r = 0;
+
+  foreach my $lookup_host (@hosts) {
+    my $lookup_ips = '';
+    my $ts=gettimeofday();
+    foreach (`$cmd $lookup_host`) {
+      chomp;
+      my $s=$_;
+      if ( /has address/ ) {
+       $lookup_ips = $lookup_ips . @{[split / /,$s]}->[3] . ',';
+      }
+    }
+    my $lookup_r = $? >> 8;
+    $$o{'dnsIndex' . ".$i"} = $i;
+    $$o{'dnsNameLookUp' . ".$i"} = $lookup_host;
+    $$o{'dnsNameResolvedIp' . ".$i"} = $lookup_ips;
+    $$o{'dnsLookUpExecTime' . ".$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{'dnsLookUpExecStatus' . ".$i"} = $lookup_r;
+    $r = $lookup_r if $lookup_r;
+    $i++;
+  }
+  $$o{'dnsLookUpFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'dnsLookUpFuncExecStatus'} = $r;
+  return  $r;
+}
 return 1;

@@ -1,0 +1,88 @@
+SUBAGENT-SHELL-DNSLOOKUP-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Counter64, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-DNSLOOKUP MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL DNS lookup MIB"
+  ::= { functionsEntry 5 }
+
+  dnsLookUpTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF dnsLookUpEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of dns lookup status ."
+    ::= { SUBAGENT-SHELL-DNSLOOKUP 1 }
+
+  dnsLookUpEntry OBJECT-TYPE 
+    SYNTAX      dnsLookUpEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current 
+    DESCRIPTION  "An entry containing management information applicable to dns lookup status" 
+    INDEX      { dnsIndex }
+    ::= { dnsLookUpTable 1 } 
+ 
+  dnsLookUpEntry ::= 
+    SEQUENCE { 
+        dnsIndex                   Integer32, 
+        dnsNameLookUp              OCTET STRING,
+        dnsNameResolvedIp          OCTET STRING,
+        dnsLookUpExecTime          OCTET STRING,              
+        dnsLookUpExecStatus        Integer32
+    } 
+
+  dnsIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each dns lookup entry."
+    ::= { dnsLookUpEntry 1 }
+
+  dnsNameLookUp OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "DNS name to lookup."
+    ::= { dnsLookUpEntry 2 }
+
+  dnsNameResolvedIp OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "DNS resolving result ip(s)."
+    ::= { dnsLookUpEntry 3 }
+
+  dnsLookUpExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "LookUpFunction time."
+    ::= { dnsLookUpEntry 4 }
+
+  dnsLookUpExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { dnsLookUpEntry 5 }
+
+  dnsLookUpFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-DNSLOOKUP 2 }
+
+  dnsLookUpFuncExecStatus OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution status."
+    ::= { SUBAGENT-SHELL-DNSLOOKUP 3 }
+
+END

@@ -44,9 +44,17 @@ cd snmpd-agent
 
 %post
 /sbin/chkconfig --add subagent-shell
+if [ "$1" -ge "1" ]; then
+  /sbin/service subagent-shell condrestart >/dev/null 2>&1 || :
+fi
+exit 0
 
-%postun
-/sbin/chkconfig --del subagent-shell
+%preun
+if [ $1 = 0 ] ; then
+  /sbin/service subagent-shell stop >/dev/null 2>&1 || :
+  /sbin/chkconfig --del subagent-shell
+fi
+exit 0
 
 %changelog
 * Wed Nov 23 2011 Serge <abrikus@gmail.com> 1.1.0.0-ssv1
