@@ -1,0 +1,29 @@
+SUBAGENT-SHELL-OSINFO-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-OSINFO MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL various information about OS"
+  ::= { functionsEntry 6 }
+
+  osinfoRelease OBJECT-TYPE
+    SYNTAX      OCTET STRING 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "OS Release information."
+    ::= { SUBAGENT-SHELL-OSINFO 1 }
+
+  osinfoSoftwareLastChange OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Last change of software."
+    ::= { SUBAGENT-SHELL-OSINFO 2 }
+
+END
