@@ -176,7 +176,7 @@ sub dnsLookUpMIB {
       chomp;
       my $s=$_;
       if ( /has address/ ) {
-       $lookup_ips = $lookup_ips . @{[split / /,$s]}->[3] . ',';
+        $lookup_ips .=  (split / /,$s)[3] . ',';
       }
     }
     my $lookup_r = $? >> 8;
@@ -191,5 +191,13 @@ sub dnsLookUpMIB {
   $$o{'dnsLookUpFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'dnsLookUpFuncExecStatus'} = $r;
   return  $r;
+}
+
+sub osInfoMIB {
+  my $i=shift; $i=1; #parameter is unused
+  my $o=shift;
+  $$o{'osinfoRelease'} = `head -1 /etc/redhat-release` if ( -f '/etc/redhat-release' );
+  $$o{'osinfoSoftwareLastChange'} =  (stat('/var/lib/rpm/Packages'))[9] if ( -f '/var/lib/rpm/Packages' );
+  
 }
 return 1;
