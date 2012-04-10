@@ -1,5 +1,5 @@
 Name:       net-snmp-subagent
-Version: 1.1.0.0
+Version:    2.0.0.0
 Release:    ssv1
 Summary:    Net SNMP subagent extends snmd mib
 License:    GPL
@@ -8,6 +8,8 @@ Source:     %name-%version.tar.gz
 BuildRoot:  %{_tmppath}/%{name}-%version-buildroot
 BuildArch:  noarch
 Packager:   Serge <abrikus@gmail.com>
+Requires:   curl ntp
+URL: http://code.google.com/p/linux-administrator-tools
 
 %description
 Net SNMP subagent executes arbitrary commands and provide results via snmpd  

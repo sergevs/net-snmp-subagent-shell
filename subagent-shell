@@ -12,7 +12,7 @@ use NetSNMP::OID (':all');
 use SNMP;
 use IPC::SysV qw(IPC_CREAT IPC_PRIVATE IPC_RMID S_IRWXU);
 use Socket;
-use POSIX qw(:sys_wait_h strftime);
+use POSIX qw(:sys_wait_h strftime locale_h);
 use Time::HiRes qw( gettimeofday );
 use Sys::Syslog qw(:standard :macros);
 use File::Basename qw( fileparse );
@@ -64,7 +64,6 @@ if ( !defined($mibDir) ) {
     $mibDir = $opt->{mib_dir};
   } 
 } 
-
 $log_to_console = 1 if $opt->{verbose};
 
 sub help {
@@ -93,11 +92,22 @@ if ($opt->{help}) {
 sub unpackMessage {
   my $shm_message = shift;
   my $oData = shift;
-  my %shm_data = unpack( 'S/(S/A* S/A*)', $shm_message );
-  if ( keys(%shm_data) == 0 ) {
+  my $sOids = shift;
+  my $prevTimeStamp = shift;
+
+  my $curTimeStamp = unpack( 'S/A*', $shm_message );
+
+  if ( ! $curTimeStamp ) {
       logMessage(LOG_WARNING, "no keys yet;");  
-      return ();
-  }
+      return 0;
+  } elsif ( defined($$prevTimeStamp) && $curTimeStamp == $$prevTimeStamp ) {
+      logMessage(LOG_DEBUG, "oid data is up to date, $curTimeStamp");  
+      return 0;
+  } 
+  logMessage(LOG_DEBUG, "reading and unpacking data. prevTimeStamp: " . (defined($$prevTimeStamp)?$$prevTimeStamp:"") . ", curTimeStamp: $curTimeStamp");  
+  my %shm_data;
+  ( $$prevTimeStamp, %shm_data )= unpack( 'S/A* S/(S/A* S/A*)', $shm_message );
+
   my %typeMap = ( 'GAUGE'=>ASN_GAUGE,'TICKS'=>ASN_TIMETICKS,'INTEGER'=>ASN_INTEGER, 'INTEGER32'=>ASN_INTEGER,'COUNTER64'=>ASN_COUNTER64,'OCTETSTR'=>ASN_OCTET_STR );
   while ( my($k,$v) = each %shm_data) { 
     if ( $k !~ /^\./ ) { 
@@ -116,7 +126,8 @@ sub unpackMessage {
         $$oData{$reg_oid . '.107' . $k}->{'T'} = ASN_OCTET_STR;
     }
   }
-  return (sort { new NetSNMP::OID($a)<=>new NetSNMP::OID($b) } ( keys %$oData ) );
+  @$sOids = (sort { new NetSNMP::OID($a)<=>new NetSNMP::OID($b) } ( keys %$oData ) );
+  return 0;
 }
 
 sub logMessage {
@@ -215,6 +226,9 @@ sub pollerInfo {
   return 0;
 } 
 
+my %oData;
+my @sortedoids;
+my $dataTimeStamp;
 sub pollerHandler {
   my ($handler, $registration_info, $request_info, $requests) = @_;
 
@@ -227,27 +241,22 @@ sub pollerHandler {
     return ( defined($$r{'T'})?$$r{'T'}:ASN_OCTET_STR, $$r{'V'} );
   }
 
-  my %oData;
-  my @sortedoids;
+#read and unpack
   my $shm_message;
-
   semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
   unless (shmread($shm_id, $shm_message, 0, $shm_size-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
   semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
-#  substr($shm_message, index($shm_message, "\0"))='';
-  logMessage(LOG_DEBUG, "read message:  <$shm_message>, length " . length($shm_message) ); 
-#read and unpack
-  @sortedoids = unpackMessage( $shm_message, \%oData );
+  unpackMessage( $shm_message, \%oData, \@sortedoids, \$dataTimeStamp );
   return if ($#sortedoids < 0 );
-#
-  foreach my $k(@sortedoids) {
-    logMessage(LOG_DEBUG, "sorted oids $k -> $oData{$k}") ;
-  }
+
+#  foreach my $k(@sortedoids) {
+#    logMessage(LOG_DEBUG, "sorted oids $k -> $oData{$k}") ;
+#  }
   for(my $request = $requests; $request; $request = $request->next()) {
     my $oid = $request->getOID();
+    my $soid=oidToString($oid); 
     logMessage(LOG_DEBUG, "Requested: $oid" ); 
     if ( $request_info->getMode() == MODE_GET ) {
-      my $soid=oidToString($oid); 
       logMessage(LOG_DEBUG, "MODE: GET $soid"); 
       if ( defined ( $oData{"$soid"} )) {
         $request->setValue(unpackOData($oData{$soid}));
@@ -272,7 +281,7 @@ sub pollerHandler {
           $request->setValue(unpackOData($oData{$nsoids[$oididx+1]}));
         }
       }
-    }
+    } 
   }
 }
 
@@ -300,6 +309,7 @@ sub daemonize {
 
 # ===== main =====
 {
+  setlocale(LC_ALL,'C'); # avoid unexpected formatting
   my $amode = ($0=~'snmp_perl.pl')?0:1;
   if ( $opt->{daemon} ) {
     logMessage(LOG_WARNING, "can't become daemon in subagent mode") if ( $amode == 0 );
@@ -316,7 +326,7 @@ sub daemonize {
     };
     $SIG{HUP} = sub {
       readConfig();
-      logMessage(LOG_INFO, "Received HUP, reloading configuration.");
+      logMessage(LOG_INFO, "Received HUP, doing nothing.");
     };
   }
   my $agent = new NetSNMP::agent('Name' => "subagent-shell", 'AgentX' => $amode  );
@@ -333,6 +343,7 @@ sub daemonize {
   unless (defined($sem_id=semget($shm_id, 1, IPC_CREAT | 0700)))      { logMessage(LOG_ERR, "can't semctl $!"); exit 1; }
   unless (socketpair(CHILD, PARENT, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) { logMessage(LOG_ERR, "can't make sockepair $!"); exit 1; };
   my $pid;
+  my $parent_pid = $$; #to identify that the parent process is alive
   if ($pid = fork) {
 # ===== parent ======
     close PARENT;
@@ -348,7 +359,7 @@ sub daemonize {
       $agent->shutdown();
     }
   } else { 
-  # ===== child =====
+# ===== child =====
     close CHILD;
     unless ( defined( $pid ) )      { logMessage(LOG_ERR, "cannot fork: $!"); exit 1; }
     unless (open STDIN, ">&PARENT") { logMessage(LOG_ERR, "can't dup STDIN $!"); exit 1; }
@@ -366,7 +377,7 @@ sub daemonize {
       %fStatus = ($agentMib{functionsCount}=>0, 
                   $agentMib{functionsSuccessCount}=>0, 
                   $agentMib{functionsFailedCount}=>0, 
-                  $agentMib{timeStamp}=>strftime('%d-%b-%Y %H:%M',localtime), 
+                  $agentMib{timeStamp}=>strftime('%d-%b-%Y %H:%M:%S (%s)',localtime), 
                   $agentMib{totalExecTime}=>0);
       %otree = (); 
       my $s_time = scalar gettimeofday();
@@ -381,15 +392,18 @@ sub daemonize {
       }
   #   add pollerInfo
       pollerInfo(\%otree,\%fStatus,$s_time);
-      $shm_message = pack( 'S(S/A* S/A*)*', scalar keys( %otree ), %otree );
+      $shm_message = pack( 'S/A* S(S/A* S/A*)*', @{[split /\(|\)/, $otree{$agentMib{timeStamp}}]}->[1], scalar keys( %otree ), %otree );
   #    while (my ($k,$v) = each %otree) { logMessage(LOG_DEBUG, "otree: $k => $v" );}
-
-      my %oData;
-        my @sortedoids = unpackMessage( $shm_message, \%oData );
+      if ( $opt->{verbose} >1 ) {
+        my %oData;
+        my $dataTimeStamp;
+        my @sortedoids;
+        unpackMessage( $shm_message, \%oData, \@sortedoids, \$dataTimeStamp );
         foreach my $o (@sortedoids) {
           my ( $t, $v ) = unpackOData($oData{$o});
           logMessage(LOG_DEBUG, "otree: $o = $t , $v" );
         }
+      }
       semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
       unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
       semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
@@ -397,11 +411,21 @@ sub daemonize {
       my ($rin, $rout)  = ('', '');
       vec($rin, fileno(STDIN), 1) = 1;
       my ($nfound, $timeleft) = select($rout=$rin, undef, undef, $poller_cycle);
-      if ( ($nfound == 1 ) ) {
+      if ( $nfound == 1 ) {
+        logMessage(LOG_INFO, "Connection with agent lost, code=$nfound");
+        my $terminate=1;
+        if ( -f "/proc/$parent_pid/status" ) {
+          my $pname=`cat /proc/$parent_pid/status | head -1 | cut -f2`;
+          $terminate = 0 if ( $pname eq 'subagent-shell' ) 
+        }
+        if ($terminate) {
+          logMessage(LOG_INFO, "main process died, shutdown");
           shmctl($shm_id, IPC_RMID, 0);
           semctl($sem_id, 0, IPC_RMID, 0);
-          logMessage(LOG_INFO, "Connection with agent lost, code=$nfound, shutting down");
           exit; 
+        } else {
+          logMessage(LOG_INFO, "main process is up, resuming");
+        }
       }
     }
   }
