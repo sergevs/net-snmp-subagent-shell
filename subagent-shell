@@ -357,6 +357,8 @@ sub daemonize {
         $agent->agent_check_and_process(1);
       } 
       $agent->shutdown();
+
+      unlink $remove_pid_file if ($remove_pid_file);
     }
   } else { 
 # ===== child =====
