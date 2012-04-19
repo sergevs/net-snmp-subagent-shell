@@ -198,6 +198,7 @@ sub osInfoMIB {
   my $o=shift;
   $$o{'osinfoRelease'} = `head -1 /etc/redhat-release` if ( -f '/etc/redhat-release' );
   $$o{'osinfoSoftwareLastChange'} =  (stat('/var/lib/rpm/Packages'))[9] if ( -f '/var/lib/rpm/Packages' );
-  
+  return 0;  
 }
+
 return 1;
