@@ -1,0 +1,98 @@
+SUBAGENT-SHELL-LAST-LOGINS-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Counter64, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-LAST-LOGINS MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL last logged in users  MIB"
+  ::= { functionsEntry 7 }
+
+  loggedInUsersCount OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each apache status."
+    ::= { SUBAGENT-SHELL-LAST-LOGINS 1 }
+
+  loggedInUsersTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF loggedInUsersEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of logged in users"
+    ::= { SUBAGENT-SHELL-LAST-LOGINS 2 }
+
+  loggedInUsersEntry OBJECT-TYPE
+    SYNTAX      loggedInUsersEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "An entry containing information about logged in users"
+    INDEX      { loggedInUserIndex }
+    ::= { loggedInUsersTable 1 }
+
+  loggedInUsersEntry ::=
+    SEQUENCE {
+        loggedInUserIndex         Integer32,
+        loggedInUserInfo           OCTET STRING
+    }
+
+  loggedInUserIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each logged in user"
+    ::= { loggedInUsersEntry 1 }
+
+  loggedInUserInfo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "logged in user info"
+    ::= { loggedInUsersEntry 2 }
+
+  wtmpBegins OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "wtmp start"
+    ::= { SUBAGENT-SHELL-LAST-LOGINS 3 }
+
+  lastUsersTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF lastUsersEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of logged in users"
+    ::= { SUBAGENT-SHELL-LAST-LOGINS 4 }
+
+  lastUsersEntry OBJECT-TYPE
+    SYNTAX      lastUsersEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "An entry containing information about logged in users"
+    INDEX      { lastUserIndex }
+    ::= { lastUsersTable 1 }
+
+  lastUsersEntry ::=
+    SEQUENCE {
+        lastUserIndex         Integer32,
+        lastUserInfo           OCTET STRING
+    }
+
+  lastUserIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each logged in user"
+    ::= { lastUsersEntry 1 }
+
+  lastUserInfo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "a user info"
+    ::= { lastUsersEntry 2 }
+END

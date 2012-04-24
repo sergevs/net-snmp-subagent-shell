@@ -201,4 +201,38 @@ sub osInfoMIB {
   return 0;  
 }
 
+sub lastLoginsMIB {
+  my $i=shift; $i=1; #parameter is unused
+  my $o=shift;
+  my $t=gettimeofday();
+  my $r;
+
+  foreach  (`w -h`) {
+    chomp;
+    $$o{'loggedInUserIndex.' . $i} = $i;
+    $$o{'loggedInUserInfo.' . $i} = $_;
+    $i++;
+  }
+  $$o{'loggedInUsersCount'} = $i-1;
+
+  $r = $? >> 8;
+
+  $i=1;  
+
+  foreach  (`last -w -n 20`) {
+    chomp;
+    next if ( /^$/ );
+    if ( /^wtmp begins/ ) {
+      $$o{'wtmpBegins'} = $_;
+      next;
+    }
+
+    $$o{'lastUserIndex.' . $i} = $i;
+    $$o{'lastUserInfo.' . $i} = $_;
+    $i++;
+  }
+  $r = $r || ($? >> 8);
+  return $r;
+}
+
 return 1;
