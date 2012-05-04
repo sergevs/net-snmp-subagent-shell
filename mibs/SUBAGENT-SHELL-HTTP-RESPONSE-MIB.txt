@@ -1,0 +1,102 @@
+SUBAGENT-SHELL-HTTP-RESPONSE-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Counter64, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-HTTP-RESPONSE MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL Apache status MIB"
+  ::= { functionsEntry 8 }
+
+  httpResponseTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF httpResponseEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of apache status ."
+    ::= { SUBAGENT-SHELL-HTTP-RESPONSE 1 }
+
+  httpResponseEntry OBJECT-TYPE 
+    SYNTAX      httpResponseEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current 
+    DESCRIPTION  "An entry containing management information applicable to apache server status" 
+    INDEX      { httpRespIndex }
+    ::= { httpResponseTable 1 } 
+ 
+  httpResponseEntry ::= 
+    SEQUENCE { 
+        httpRespIndex                   Integer32, 
+        httpRespMatched                 Integer32, 
+        httpRespCode                    Integer32, 
+        httpRespCmdExecTime             OCTET STRING,              
+        httpRespCmdExecStatus           Integer32,
+        httpRespUrl                     OCTET STRING              
+    } 
+
+  httpRespIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each url response."
+    ::= { httpResponseEntry 1 }
+
+  httpRespMatched OBJECT-TYPE
+    SYNTAX      Integer32 {
+                  matchNotSet(0),
+                  matched(1),
+                  matchFailed(2)
+              }
+
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "set regex matched or no."
+    ::= { httpResponseEntry 2 }
+
+  httpRespCode  OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "HTTP response code."
+    ::= { httpResponseEntry 3 }
+
+
+  httpRespCmdExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { httpResponseEntry 4 }
+
+  httpRespCmdExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { httpResponseEntry 5 }
+
+  httpRespCurlArgs OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "curl command arguments."
+    ::= { httpResponseEntry 6 }
+
+  httpRespFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-HTTP-RESPONSE 2 }
+
+  httpRespFuncExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-HTTP-RESPONSE 3 }
+
+END

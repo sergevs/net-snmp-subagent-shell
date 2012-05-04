@@ -51,7 +51,6 @@ sub apacheStatusMIB {
 
   foreach my $u (@urls) {
     my $ts=gettimeofday();
-    print "$cmd $u\n";
     foreach (`$cmd $u`) {
       chomp;
       my $s=$_;
@@ -89,6 +88,36 @@ sub apacheStatusMIB {
   }
   $$o{'apsFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'apsFuncExecStatus'} = $r;
+  return  $r;
+}
+
+sub httpResponseMIB {
+  my $i=shift; $i = 1; # i is unused
+  my $o=shift;
+  my @curl_args=@_;
+  my $t=gettimeofday();
+  my $cmd="curl -v -s -m $cmd_timeout "; #don't use -v -s -m options for curl args
+  my $r=0;
+
+  foreach my $u (@curl_args) {
+    my $ts=gettimeofday();
+    my ($curl_opt, $content_regex) = split /:/, $u ;
+    $$o{"httpRespMatched.$i"} = defined($content_regex)?2:0;
+    foreach (`($cmd $curl_opt | sed 's/^/STDOUT:/') 2>&1`) {
+      chomp;
+      $$o{"httpRespMatched.$i"} = 1 if ( /^STDOUT/ and defined($content_regex) and /$content_regex/ );
+      $$o{"httpRespCode.$i"} = ( split )[2] if ( /^< HTTP\// );
+    }
+    my $cmd_r = $? >> 8;
+    $$o{'httpRespIndex' . ".$i"} = $i;
+    $$o{'httpRespCmdExecTime' . ".$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{'httpRespCmdExecStatus' . ".$i"} = $cmd_r;
+    $$o{'httpRespCurlArgs' . ".$i"} = $u;
+    $r = $cmd_r if $cmd_r;
+    $i++;
+  }
+  $$o{'httpRespFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'httpRespFuncExecStatus'} = $r;
   return  $r;
 }
 
