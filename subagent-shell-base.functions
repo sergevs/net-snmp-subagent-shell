@@ -55,34 +55,36 @@ sub apacheStatusMIB {
       chomp;
       my $s=$_;
       if ( /Scoreboard/ ) {
-        $$o{'apsWaitingForConnection' . ".$i"}=$s=~tr/_/_/; 
-        $$o{'apsSendingReply' . ".$i"}=$s=~tr/W/W/; 
-        $$o{'apsReadingRequest' . ".$i"}=$s=~tr/R/R/; 
-        $$o{'apsKeepAlive' . ".$i"}=$s=~tr/K/K/; 
-        $$o{'apsDNSLookup' . ".$i"}=$s=~tr/D/D/; 
+        $$o{"apsWaitingForConnection.$i"}=$s=~tr/_/_/; 
+        $$o{"apsSendingReply.$i"}=$s=~tr/W/W/; 
+        $$o{"apsReadingRequest.$i"}=$s=~tr/R/R/; 
+        $$o{"apsKeepAlive.$i"}=$s=~tr/K/K/; 
+        $$o{"apsDNSLookup.$i"}=$s=~tr/D/D/; 
       } elsif ( /^Total Accesses/ ) {
-        $$o{'apsTotalAccesses' . ".$i"} = ( split /: /, $s )[1];
+        $$o{"apsTotalAccesses.$i"} = ( split /: /, $s )[1];
       } elsif ( /^CPULoad/ ) {
-        $$o{'apsCpuLoad' . ".$i"} = ( split /: /, $s )[1];
+        $$o{"apsCpuLoad.$i"} = ( split /: /, $s )[1];
       } elsif ( /^Uptime/ ) {
-        $$o{'apsUptime' . ".$i"} = ( split /: /, $s )[1];
+        $$o{"apsUptime.$i"} = ( split /: /, $s )[1];
       } elsif ( /^BusyWorkers/ ) {
-        $$o{'apsBusyWorkers' . ".$i"} = ( split /: /, $s )[1];
+        $$o{"apsBusyWorkers.$i"} = ( split /: /, $s )[1];
       } elsif ( /^IdleWorkers/ ) {
-        $$o{'apsIdleWorkers' . ".$i"} = ( split /: /, $s )[1];
+        $$o{"apsIdleWorkers.$i"} = ( split /: /, $s )[1];
       } elsif ( /^ReqPerSec/ ) {
-        $$o{'apsReqPersSec' . ".$i"} = ( split /: /, $s )[1];
+        $$o{"apsReqPersSec.$i"} = ( split /: /, $s )[1];
       } elsif ( /^BytesPerSec/ ) {
-        $$o{'apsBytesPerSec' . ".$i"} = ( split /: /, $s )[1];
+        $$o{"apsBytesPerSec.$i"} = ( split /: /, $s )[1];
       } elsif ( /^BytesPerReq/ ) {
-        $$o{'apsBytesPerReq' . ".$i"} = ( split /: /, $s )[1];
+        $$o{"apsBytesPerReq.$i"} = ( split /: /, $s )[1];
       }
     }
     my $cmd_r = $? >> 8;
-    $$o{'apsIndex' . ".$i"} = $i;
-    $$o{'apsCmdExecTime' . ".$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
-    $$o{'apsCmdExecStatus' . ".$i"} = $cmd_r;
-    $$o{'apsUrl' . ".$i"} = $u;
+    $$o{"apsIndex.$i"} = $i;
+    $$o{"apsCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{"apsCmdExecStatus.$i"} = $cmd_r;
+    $$o{"apsUrl.$i"} = $u;
+    $$o{"apsWorkersUsage.$i"} = sprintf('%d',$$o{"apsBusyWorkers.$i"}*100/($$o{"apsBusyWorkers.$i"}+$$o{"apsIdleWorkers.$i"})) 
+          if defined($$o{"apsBusyWorkers.$i"} ) and $$o{"apsIdleWorkers.$i"};
     $r = $cmd_r if $cmd_r;
     $i++;
   }
