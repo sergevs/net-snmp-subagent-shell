@@ -83,7 +83,7 @@ sub apacheStatusMIB {
     $$o{"apsCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"apsCmdExecStatus.$i"} = $cmd_r;
     $$o{"apsUrl.$i"} = $u;
-    $$o{"apsWorkersUsage.$i"} = sprintf('%d',$$o{"apsBusyWorkers.$i"}*100/($$o{"apsBusyWorkers.$i"}+$$o{"apsIdleWorkers.$i"})) 
+    $$o{"apsWorkersUsage.$i"} = sprintf('%.2f',$$o{"apsBusyWorkers.$i"}*100/($$o{"apsBusyWorkers.$i"}+$$o{"apsIdleWorkers.$i"})) 
           if defined($$o{"apsBusyWorkers.$i"} ) and $$o{"apsIdleWorkers.$i"};
     $r = $cmd_r if $cmd_r;
     $i++;
