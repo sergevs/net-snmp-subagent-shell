@@ -43,9 +43,10 @@ SUBAGENT-SHELL-APACHE-STATUS MODULE-IDENTITY
         apsReadingRequest          Gauge32, 
         apsKeepAlive               Gauge32, 
         apsDNSLookup               Gauge32,
-        apsCmdExecTime            OCTET STRING,              
-        apsCmdExecStatus          Integer32,
-        apsUrl                     OCTET STRING              
+        apsCmdExecTime             OCTET STRING,              
+        apsCmdExecStatus           Integer32,
+        apsUrl                     OCTET STRING,
+        apsWorkersUsage            OCTET STRING
     } 
 
   apsIndex OBJECT-TYPE
@@ -166,6 +167,14 @@ SUBAGENT-SHELL-APACHE-STATUS MODULE-IDENTITY
     STATUS      current
     DESCRIPTION "Status url."
     ::= { apacheStatusEntry 17 }
+
+  apsWorkersUsage  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Percantage of workers usage."
+    ::= { apacheStatusEntry 18 }
+
 
   apsFuncExecTime OBJECT-TYPE
     SYNTAX      OCTET STRING
