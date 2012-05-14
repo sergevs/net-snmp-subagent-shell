@@ -103,7 +103,7 @@ sub httpResponseMIB {
 
   foreach my $u (@curl_args) {
     my $ts=gettimeofday();
-    my ($curl_opt, $content_regex) = split /|/, $u ;
+    my ($curl_opt, $content_regex) = split /\|/, $u ;
     $$o{"httpRespMatched.$i"} = defined($content_regex)?2:0;
     foreach (`($cmd $curl_opt | sed 's/^/STDOUT:/') 2>&1`) {
       chomp;
