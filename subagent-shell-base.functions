@@ -240,8 +240,8 @@ sub lastLoginsMIB {
 
   foreach  (`w -h`) {
     chomp;
-    $$o{'loggedInUserIndex.' . $i} = $i;
-    $$o{'loggedInUserInfo.' . $i} = $_;
+    $$o{"loggedInUserIndex.$i"} = $i;
+    $$o{"loggedInUserInfo.$i"} = $_;
     $i++;
   }
   $$o{'loggedInUsersCount'} = $i-1;
@@ -258,11 +258,42 @@ sub lastLoginsMIB {
       next;
     }
 
-    $$o{'lastUserIndex.' . $i} = $i;
-    $$o{'lastUserInfo.' . $i} = $_;
+    $$o{"lastUserIndex.$i"} = $i;
+    $$o{"lastUserInfo.$i"} = $_;
     $i++;
   }
   $r = $r || ($? >> 8);
+  return $r;
+}
+
+sub execCommandMIB {
+  my $i=shift; $i = 1; # i is unused
+  my $o=shift;
+  my @cmds=@_;
+  my $t=gettimeofday();
+  my $r=0;
+
+  foreach (@cmds) {
+    my $ts=gettimeofday();
+    my ($cmd, $out_regex) = split /#/, $_;
+    $$o{"cmdOutMatched.$i"} = defined($out_regex)?2:0;
+
+    foreach (`$cmd`) {
+      chomp;
+      $$o{"cmdOutMatched.$i"} = 1 if defined($out_regex) and /$out_regex/;
+    }
+
+    my $cmd_r = $? >> 8;
+    $$o{"cmdIndex.$i"} = $i;
+    $$o{"cmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{"cmdExecStatus.$i"} = $cmd_r;
+    $$o{"cmdName.$i"} = $cmd;
+    $r = $cmd_r if $cmd_r;
+    $i++;
+  }
+
+  $$o{'cmdFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'cmdFuncExecStatus'} = $r;
   return $r;
 }
 

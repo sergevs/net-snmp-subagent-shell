@@ -1,0 +1,94 @@
+SUBAGENT-SHELL-EXEC-COMMAND-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Counter64, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-EXEC-COMMAND MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL Apache status MIB"
+  ::= { functionsEntry 9 }
+
+  execCommandTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF execCommandEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of apache status ."
+    ::= { SUBAGENT-SHELL-EXEC-COMMAND 1 }
+
+  execCommandEntry OBJECT-TYPE 
+    SYNTAX      execCommandEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current 
+    DESCRIPTION  "An entry containing management information applicable to apache server status" 
+    INDEX      { httpRespIndex }
+    ::= { execCommandTable 1 } 
+ 
+  execCommandEntry ::= 
+    SEQUENCE { 
+        cmdIndex                      Integer32, 
+        cmdOutMatched                 Integer32, 
+        cmdExecTime                   OCTET STRING,              
+        cmdExecStatus                 Integer32,
+        cmdName                       OCTET STRING              
+    } 
+
+  cmdIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each command."
+    ::= { execCommandEntry 1 }
+
+  cmdOutMatched OBJECT-TYPE
+    SYNTAX      Integer32 {
+                  matchNotSet(0),
+                  matched(1),
+                  matchFailed(2)
+              }
+
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "set regex matched or no."
+    ::= { execCommandEntry 2 }
+
+
+  cmdExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "command execution time."
+    ::= { execCommandEntry 3 }
+
+  cmdExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { execCommandEntry 4 }
+
+  cmdName OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "command arguments."
+    ::= { execCommandEntry 5 }
+
+  cmdFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-EXEC-COMMAND 2 }
+
+  cmdFuncExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-EXEC-COMMAND 3 }
+
+END
