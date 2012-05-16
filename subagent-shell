@@ -201,13 +201,13 @@ sub readConfig {
     open(S_CONFIG,"$f_config") or die;
     while(<S_CONFIG>) {
       chomp;
-      s/ //g;
-      next if ( /^(#|$)/ );
+      next if ( /^(#|\s*$)/ );
       my @c=split /=/, $_, 2;
       die "error $#c" if $#c != 1;
       if ($c[0] eq 'function') { 
         my @oArg = split /,/, $c[1];
         my ($bi,$f) = ( shift @oArg, shift @oArg );
+        $f=~s/\s//g;
         my $k = pack('S/a* S/a*', $bi, $f );
         logMessage( LOG_WARNING, "functions for $bi, $f is already defined, redefining") if defined($oDescr{$k}); 
         $oDescr{$k}=[@oArg];
