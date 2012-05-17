@@ -210,6 +210,10 @@ sub readConfig {
         $f=~s/\s//g;
         my $k = pack('S/a* S/a*', $bi, $f );
         logMessage( LOG_WARNING, "functions for $bi, $f is already defined, redefining") if defined($oDescr{$k}); 
+        for(my $i=0;$i<=$#oArg;$i++) {
+          $oArg[$i] =~ s/^\s+//;
+          $oArg[$i] =~ s/\s+$//;
+        }
         $oDescr{$k}=[@oArg];
       }     
     }
