@@ -17,9 +17,10 @@ use Time::HiRes qw( gettimeofday );
 use Sys::Syslog qw(:standard :macros);
 use File::Basename qw( fileparse );
 use Getopt::Long;
+use XML::Simple;
+use Data::Dumper;
 
-our ($reg_oid, $poller_cycle, $stale_time, $log_to_console, $log_level, $cmd_timeout, $shm_size);
-my  %oDescr;
+our ($config, @functions_config, $reg_oid);
 my  ($shm_id, $sem_id);
 my  $running=1;
 my  $remove_pid_file;
@@ -64,7 +65,7 @@ if ( !defined($mibDir) ) {
     $mibDir = $opt->{mib_dir};
   } 
 } 
-$log_to_console = 1 if $opt->{verbose};
+$config->{'log_to_console'} = 1 if $opt->{verbose};
 
 sub help {
   print <<EOHELP;
@@ -133,61 +134,29 @@ sub unpackMessage {
 sub logMessage {
   my $level = shift;
   my $msg = shift;
-  if ( $log_level && $log_level >= $level ) {
+  if ( $config->{'log_level'} && $config->{'log_level'} >= $level ) {
     openlog( "subagent-shell", 'pid', LOG_DAEMON );
     syslog ( $level, $msg );
     closelog;
   }
-  print STDERR "$msg\n" if defined($log_to_console) && $log_to_console != 0;
+  print STDERR "$msg\n" if defined($config->{'log_to_console'}) && $config->{'log_to_console'} != 0;
 }
 
 sub readConfig {
-  $log_level = LOG_INFO;
+  $config->{'log_level'} = LOG_INFO;
   logMessage(LOG_INFO, "Reading config ...");
-  %oDescr=();
-# process the main configuration file
-  open(CONFIG,"${subAgentDir}subagent-shell.conf") or die;
-  while(<CONFIG>) {
-    chomp;
-    s/ //g;
-    next if ( /^(#|$)/ );
-    my @c=split /=/, $_, 2;
-    die "error $#c" if $#c != 1;
-    if ($c[0] eq 'poller_cycle') {
-      $poller_cycle=$c[1];
-    } elsif ($c[0] eq 'stale_time') {
-      $stale_time=$c[1];
-    } elsif ($c[0] eq 'log_to_console') {
-      $log_to_console=$c[1];
-    } elsif ($c[0] eq 'log_level') {
-      $log_level=$c[1];
-    } elsif ($c[0] eq 'cmd_timeout') {
-      $cmd_timeout=$c[1];
-    } elsif ($c[0] eq 'shm_size') {
-      $shm_size=$c[1];
-    } elsif ($c[0] eq 'cmd_timeout') {
-      $cmd_timeout=$c[1];
-    } elsif ($c[0] eq 'rootMIB') {
-      $agentMib{rootMIB}=$c[1];
-    } elsif ($c[0] eq 'functionsCount') {
-      $agentMib{functionsCount}=$c[1];
-    }  elsif ($c[0] eq 'functionsSuccessCount') {
-      $agentMib{functionsSuccessCount}=$c[1];
-    }  elsif ($c[0] eq 'functionsFailedCount') {
-      $agentMib{functionsFailedCount}=$c[1];
-    }  elsif ($c[0] eq 'timeStamp') {
-      $agentMib{timeStamp}=$c[1];
-    }  elsif ($c[0] eq 'totalExecTime') {
-      $agentMib{totalExecTime}=$c[1];
-    }  else {
-      logMessage(LOG_ERR, "unexpected token $c[0] in config file,ignoring");  
-    }  
-  }
-  close CONFIG;
+  logMessage(LOG_DEBUG, "loading main config ${subAgentDir}subagent-shell-conf.xml");
+  my $x = XML::Simple->new();
+  $config=$x->XMLin("${subAgentDir}subagent-shell-conf.xml");
+  $config->{'log_to_console'} = 1 if $opt->{verbose};
+  $agentMib{rootMIB}=$config->{'rootMIB'};
+  $agentMib{functionsCount}=$config->{'functionsCount'};
+  $agentMib{functionsSuccessCount}=$config->{'functionsSuccessCount'};
+  $agentMib{functionsFailedCount}=$config->{'functionsFailedCount'};
+  $agentMib{timeStamp}=$config->{'timeStamp'};
+  $agentMib{totalExecTime}=$config->{'totalExecTime'};
+  
   $reg_oid=$SNMP::MIB{$agentMib{rootMIB}}->{'objectID'};
-
-# do not load functions in the agent
-#  return 0 if $0 !~ 'snmpd-poller$'; 
 
 # load extention functions
   foreach my $ff ( glob "${subAgentDir}*.functions" ) {
@@ -196,28 +165,10 @@ sub readConfig {
   }
 # process hostname based configuration files
   my $h = hostname;
-  foreach my $f_config ( (glob "${subAgentDir}subagent-shell-*.conf"), (glob "${subAgentDir}conf.d/${h}*.conf")) {
-    logMessage(LOG_DEBUG, "loading config from  $f_config");
-    open(S_CONFIG,"$f_config") or die;
-    while(<S_CONFIG>) {
-      chomp;
-      next if ( /^(#|\s*$)/ );
-      my @c=split /=/, $_, 2;
-      die "error $#c" if $#c != 1;
-      if ($c[0] eq 'function') { 
-        my @oArg = split /,/, $c[1];
-        my ($bi,$f) = ( shift @oArg, shift @oArg );
-        $f=~s/\s//g;
-        my $k = pack('S/a* S/a*', $bi, $f );
-        logMessage( LOG_WARNING, "functions for $bi, $f is already defined, redefining") if defined($oDescr{$k}); 
-        for(my $i=0;$i<=$#oArg;$i++) {
-          $oArg[$i] =~ s/^\s+//;
-          $oArg[$i] =~ s/\s+$//;
-        }
-        $oDescr{$k}=[@oArg];
-      }     
-    }
-    close S_CONFIG;
+  foreach my $f_config ( (glob "${subAgentDir}subagent-shell-*-conf.xml"), (glob "${subAgentDir}conf.d/${h}*-conf.xml")) {
+    logMessage(LOG_DEBUG, "loading functions config from $f_config");
+    my $x = XML::Simple->new(ForceArray=>1);
+    push @functions_config, $x->XMLin($f_config);
   }
 }
 
@@ -248,7 +199,7 @@ sub pollerHandler {
 #read and unpack
   my $shm_message;
   semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-  unless (shmread($shm_id, $shm_message, 0, $shm_size-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
+  unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
   semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
   unpackMessage( $shm_message, \%oData, \@sortedoids, \$dataTimeStamp );
   return if ($#sortedoids < 0 );
@@ -343,7 +294,7 @@ sub daemonize {
   SNMP::loadModules("ALL");
   readConfig();
 
-  unless (defined($shm_id=shmget(IPC_PRIVATE, $shm_size, S_IRWXU)))   { logMessage(LOG_ERR, "can't shmget $!"); exit 1; }
+  unless (defined($shm_id=shmget(IPC_PRIVATE, $config->{'shm_size'}, S_IRWXU)))   { logMessage(LOG_ERR, "can't shmget $!"); exit 1; }
   unless (defined($sem_id=semget($shm_id, 1, IPC_CREAT | 0700)))      { logMessage(LOG_ERR, "can't semctl $!"); exit 1; }
   unless (socketpair(CHILD, PARENT, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) { logMessage(LOG_ERR, "can't make sockepair $!"); exit 1; };
   my $pid;
@@ -379,7 +330,7 @@ sub daemonize {
     logMessage(LOG_INFO, "Starting poller");
 
     while (1) { 
-      logMessage(LOG_DEBUG, "polling with $poller_cycle s interval");
+      logMessage(LOG_DEBUG, "polling with $config->{'poller_cycle'} s interval");
       %fStatus = ($agentMib{functionsCount}=>0, 
                   $agentMib{functionsSuccessCount}=>0, 
                   $agentMib{functionsFailedCount}=>0, 
@@ -387,14 +338,14 @@ sub daemonize {
                   $agentMib{totalExecTime}=>0);
       %otree = (); 
       my $s_time = scalar gettimeofday();
-      foreach my $i (keys %oDescr) {
-        my ($bi, $func) = unpack('S/a* S/a*', $i);
-        $fStatus{$agentMib{functionsCount}} += 1;  
-        if ( &$func( $bi, \%otree, @{$oDescr{$i}} ) == 0 ) { 
-          $fStatus{$agentMib{functionsSuccessCount}} += 1;
-        } else {
-          $fStatus{$agentMib{functionsFailedCount}} += 1;
-        } 
+      foreach my $config_data ( @functions_config ){
+        foreach my $func ( keys (%{$config_data->{'function'}}) ){
+          if ( &$func( \%otree, $config_data->{'function'}->{$func} ) == 0 ) { 
+            $fStatus{$agentMib{functionsSuccessCount}} += 1;
+          } else {
+            $fStatus{$agentMib{functionsFailedCount}} += 1;
+          } 
+        }
       }
   #   add pollerInfo
       pollerInfo(\%otree,\%fStatus,$s_time);
@@ -411,12 +362,12 @@ sub daemonize {
         }
       }
       semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-      unless(shmwrite($shm_id, $shm_message, 0, $shm_size-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
+      unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
       semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
 
       my ($rin, $rout)  = ('', '');
       vec($rin, fileno(STDIN), 1) = 1;
-      my ($nfound, $timeleft) = select($rout=$rin, undef, undef, $poller_cycle);
+      my ($nfound, $timeleft) = select($rout=$rin, undef, undef, $config->{'poller_cycle'});
       if ( $nfound == 1 ) {
         logMessage(LOG_INFO, "Connection with agent lost, code=$nfound");
         my $terminate=1;

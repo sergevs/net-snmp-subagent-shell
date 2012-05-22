@@ -1,14 +1,14 @@
 use strict;
 use warnings;
-# old style function
-our $cmd_timeout;
+our $config;
 
+# old style function
 sub monitorNtp {
   my $base=shift;$base = ".$base";
   my $o=shift;
   my $nsrv=shift;
   my $t=gettimeofday();
-  my $cmd="/usr/sbin/ntpdate -t $cmd_timeout -q4 $nsrv";
+  my $cmd="/usr/sbin/ntpdate -t $config->{'cmd_timeout'} -q4 $nsrv";
   my $v;
 
   foreach (`$cmd`) {
@@ -42,16 +42,16 @@ sub monitorNtp {
 #   "D" DNS Lookup, 
 
 sub apacheStatusMIB {
-  my $i=shift;$i = 1; # i is unused
   my $o=shift;
-  my @urls=@_;
-  my $t=gettimeofday();
-  my $cmd="curl -s -m $cmd_timeout ";
+  my $cfg=shift;
+  my $cmd="curl -s -m $config->{'cmd_timeout'} ";
+  my $i=1; # i is unused
   my $r=0;
+  my $t=gettimeofday();
 
-  foreach my $u (@urls) {
+  foreach my $a (@{$cfg->{'args'}}) {
     my $ts=gettimeofday();
-    foreach (`$cmd $u`) {
+    foreach (`$cmd $a->{'status_url'}`) {
       chomp;
       my $s=$_;
       if ( /Scoreboard/ ) {
@@ -82,7 +82,7 @@ sub apacheStatusMIB {
     $$o{"apsIndex.$i"} = $i;
     $$o{"apsCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"apsCmdExecStatus.$i"} = $cmd_r;
-    $$o{"apsUrl.$i"} = $u;
+    $$o{"apsUrl.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'status_url'}]";
     $$o{"apsWorkersUsage.$i"} = sprintf('%.2f',$$o{"apsBusyWorkers.$i"}*100/($$o{"apsBusyWorkers.$i"}+$$o{"apsIdleWorkers.$i"})) 
           if defined($$o{"apsBusyWorkers.$i"} ) and $$o{"apsIdleWorkers.$i"};
     $r = $cmd_r if $cmd_r;
@@ -94,27 +94,26 @@ sub apacheStatusMIB {
 }
 
 sub httpResponseMIB {
-  my $i=shift; $i = 1; # i is unused
   my $o=shift;
-  my @curl_args=@_;
-  my $t=gettimeofday();
-  my $cmd="curl -v -s -m $cmd_timeout "; #don't use -v -s -m options for curl args
+  my $cfg=shift;
+  my $cmd="curl -v -s -m $config->{'cmd_timeout'} "; #don't use -v -s -m options for curl args
+  my $i=1; 
   my $r=0;
+  my $t=gettimeofday();
 
-  foreach my $u (@curl_args) {
+  foreach my $a (@{$cfg->{'args'}}) {
     my $ts=gettimeofday();
-    my ($curl_opt, $content_regex) = split /\|/, $u ;
-    $$o{"httpRespMatched.$i"} = defined($content_regex)?2:0;
-    foreach (`($cmd $curl_opt | sed 's/^/STDOUT:/') 2>&1`) {
+    $$o{"httpRespMatched.$i"} = defined($a->{'match'})?2:0;
+    foreach (`($cmd $a->{'curl'} | sed 's/^/STDOUT:/') 2>&1`) {
       chomp;
-      $$o{"httpRespMatched.$i"} = 1 if ( /^STDOUT/ and defined($content_regex) and /$content_regex/ );
+      $$o{"httpRespMatched.$i"} = 1 if ( /^STDOUT/ and defined($a->{'match'}) and /$a->{'match'}/ );
       $$o{"httpRespCode.$i"} = ( split )[2] if ( /^< HTTP\// );
     }
     my $cmd_r = $? >> 8;
-    $$o{'httpRespIndex' . ".$i"} = $i;
-    $$o{'httpRespCmdExecTime' . ".$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
-    $$o{'httpRespCmdExecStatus' . ".$i"} = $cmd_r;
-    $$o{'httpRespCurlArgs' . ".$i"} = $u;
+    $$o{"httpRespIndex.$i"} = $i;
+    $$o{"httpRespCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{"httpRespCmdExecStatus.$i"} = $cmd_r;
+    $$o{"httpRespCurlArgs.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'curl'}]";
     $r = $cmd_r if $cmd_r;
     $i++;
   }
@@ -124,11 +123,10 @@ sub httpResponseMIB {
 }
 
 sub ntpSyncMIB {
-  my $base=shift;
   my $o=shift;
-  my $nsrv=shift;
+  my $cfg=shift;
   my $t=gettimeofday();
-  my $cmd="/usr/sbin/ntpdate -t $cmd_timeout -q4 $nsrv";
+  my $cmd="/usr/sbin/ntpdate -t $config->{'cmd_timeout'} -q4 $cfg->{'args'}[0]->{'server'}";
   my $v;
 
   foreach (`$cmd`) {
@@ -137,14 +135,13 @@ sub ntpSyncMIB {
   }
   my $r = $? >> 8;
   $$o{'ntpSyncStatus'} = sprintf('%.3f', $v);
-  $$o{'ntpSyncServer'} = $nsrv;
+  $$o{'ntpSyncServer'} = $cfg->{'args'}[0]->{'server'};
   $$o{'ntpSyncFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'ntpSyncExecStatus'} = $r;
   return $r;
 }
 
 sub procCountMIB {
-  my $base=shift;
   my $o=shift;
   my $t=gettimeofday();
   my $cmd='top -b -n1 | awk \'/^Tasks/{print $2 " " $4 " " $6 " " $8 " " $10}\'';
@@ -166,7 +163,6 @@ sub procCountMIB {
 }
   
 sub ip_conntrackMIB {
-  my $base=shift;
   my $o=shift;
   my $t=gettimeofday();
   my $cmd="cat /proc/sys/net/ipv4/netfilter/ip_conntrack_count /proc/sys/net/ipv4/ip_conntrack_max | tr '\n' ' '";
@@ -193,17 +189,17 @@ sub ip_conntrackMIB {
 }
 
 sub dnsLookUpMIB {
-  my $i=shift; $i=1; #parameter is unused
   my $o=shift;
-  my @hosts=@_;
+  my $cfg=shift;
+  my $cmd="/usr/bin/host -W $config->{'cmd_timeout'}";
+  my $i=1;
+  my $r=0;
   my $t=gettimeofday();
-  my $cmd="/usr/bin/host -W $cmd_timeout";
-  my $r = 0;
 
-  foreach my $lookup_host (@hosts) {
+  foreach my $a (@{$cfg->{'args'}}) {
     my $lookup_ips = '';
     my $ts=gettimeofday();
-    foreach (`$cmd $lookup_host`) {
+    foreach (`$cmd $a->{'fqdn'}`) {
       chomp;
       my $s=$_;
       if ( /has address/ ) {
@@ -211,11 +207,11 @@ sub dnsLookUpMIB {
       }
     }
     my $lookup_r = $? >> 8;
-    $$o{'dnsIndex' . ".$i"} = $i;
-    $$o{'dnsNameLookUp' . ".$i"} = $lookup_host;
-    $$o{'dnsNameResolvedIp' . ".$i"} = $lookup_ips;
-    $$o{'dnsLookUpExecTime' . ".$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
-    $$o{'dnsLookUpExecStatus' . ".$i"} = $lookup_r;
+    $$o{"dnsIndex.$i"} = $i;
+    $$o{"dnsNameLookUp.$i"} = $a->{'fqdn'};
+    $$o{"dnsNameResolvedIp.$i"} = $lookup_ips;
+    $$o{"dnsLookUpExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{"dnsLookUpExecStatus.$i"} = $lookup_r;
     $r = $lookup_r if $lookup_r;
     $i++;
   }
@@ -225,7 +221,6 @@ sub dnsLookUpMIB {
 }
 
 sub osInfoMIB {
-  my $i=shift; $i=1; #parameter is unused
   my $o=shift;
   $$o{'osinfoRelease'} = `head -1 /etc/redhat-release` if ( -f '/etc/redhat-release' );
   $$o{'osinfoSoftwareLastChange'} =  (stat('/var/lib/rpm/Packages'))[9] if ( -f '/var/lib/rpm/Packages' );
@@ -233,10 +228,10 @@ sub osInfoMIB {
 }
 
 sub lastLoginsMIB {
-  my $i=shift; $i=1; #parameter is unused
   my $o=shift;
-  my $t=gettimeofday();
+  my $i=1;
   my $r;
+  my $t=gettimeofday();
 
   foreach  (`w -h`) {
     chomp;
@@ -267,27 +262,26 @@ sub lastLoginsMIB {
 }
 
 sub execCommandMIB {
-  my $i=shift; $i = 1; # i is unused
   my $o=shift;
-  my @cmds=@_;
-  my $t=gettimeofday();
+  my $cfg=shift;
+  my $i=1; 
   my $r=0;
+  my $t=gettimeofday();
 
-  foreach (@cmds) {
+  foreach my $a (@{$cfg->{'args'}}) {
     my $ts=gettimeofday();
-    my ($cmd, $out_regex) = split /#/, $_;
-    $$o{"cmdOutMatched.$i"} = defined($out_regex)?2:0;
+    $$o{"cmdOutMatched.$i"} = defined($a->{'match'})?2:0;
 
-    foreach (`$cmd`) {
+    foreach (`$a->{'cmd'}`) {
       chomp;
-      $$o{"cmdOutMatched.$i"} = 1 if defined($out_regex) and /$out_regex/;
+      $$o{"cmdOutMatched.$i"} = 1 if defined($a->{'match'}) and /$a->{'match'}/;
     }
 
     my $cmd_r = $? >> 8;
     $$o{"cmdIndex.$i"} = $i;
     $$o{"cmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"cmdExecStatus.$i"} = $cmd_r;
-    $$o{"cmdName.$i"} = $cmd;
+    $$o{"cmdName.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'cmd'}]";
     $r = $cmd_r if $cmd_r;
     $i++;
   }

@@ -1,0 +1,28 @@
+<?xml version='1.0'?>
+<config>
+<function id="ntpSyncMIB">
+  <args server="ntp"/>
+</function>
+<function id="procCountMIB"/>
+<function id="osInfoMIB"/>
+<function id="lastLoginsMIB"/>
+<!--
+<function id="ip_conntrackMIB"/>
+<function id="httpResponseMIB">
+  <args curl="m.google.com" match="Country" description="google"/>
+  <args curl="mail.google.com" description="mail"/>
+</function>
+<function id="apacheStatusMIB">
+  <args status_url="localhost/server-status?auto" description="standard status"/>
+  <args status_url="localhost/server-status?auto"/>
+</function>
+<function id="execCommandMIB">
+  <args cmd="ls -alh" match="afile" description="looking for afile"/>
+  <args cmd="find" match="afile" description="looking for afile in subtree"/>
+</function>
+<function id="dnsLookUpMIB">
+  <args fqdn="www.google.com"/>
+  <args fqdn="mail.google.com"/>
+</function>
+-->
+</config>

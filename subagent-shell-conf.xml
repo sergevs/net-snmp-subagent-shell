@@ -1,0 +1,13 @@
+<?xml version='1.0'?>
+<config poller_cycle="300"
+        stale_time="600"
+        cmd_timeout="10"
+        log_level="10"
+        shm_size="16195"
+        rootMIB="SUBAGENT-SHELL"
+        functionsCount="ssFunctionsCount"
+        functionsSuccessCount="ssFunctionsSuccessCount"
+        functionsFailedCount="ssFunctionsFailedCount"
+        timeStamp="ssTimeStamp"
+        totalExecTime="ssTotalExecTime"
+/>
