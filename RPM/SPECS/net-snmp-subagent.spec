@@ -27,7 +27,7 @@ cd snmpd-agent
 %__mkdir_p %buildroot%_sysconfdir/sysconfig
 %__mkdir_p %buildroot/etc/snmp/subagent/{conf.d,mibs}
 %__install subagent-shell %buildroot%_bindir
-%__install subagent-shell{.conf,-base.functions,-functions.conf} %buildroot/etc/snmp/subagent
+%__install subagent-shell{-conf.xml,-base.functions,-functions-conf.xml} %buildroot/etc/snmp/subagent
 %__install mibs/* %buildroot/etc/snmp/subagent/mibs
 %__install subagent-shell.init %buildroot%_sysconfdir/init.d/subagent-shell
 %__install subagent-shell.options %buildroot%_sysconfdir/sysconfig
@@ -40,7 +40,7 @@ cd snmpd-agent
 %dir /etc/snmp/subagent/conf.d
 /etc/snmp/subagent/mibs/*
 /etc/snmp/subagent/*.functions
-%config(noreplace) %attr(444,root,root) /etc/snmp/subagent/*.conf
+%config(noreplace) %attr(444,root,root) /etc/snmp/subagent/*-conf.xml
 %_sysconfdir/init.d/subagent-shell
 %_sysconfdir/sysconfig/subagent-shell.options
 
