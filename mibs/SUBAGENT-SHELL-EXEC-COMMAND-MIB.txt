@@ -33,7 +33,8 @@ SUBAGENT-SHELL-EXEC-COMMAND MODULE-IDENTITY
         cmdOutMatched                 Integer32, 
         cmdExecTime                   OCTET STRING,              
         cmdExecStatus                 Integer32,
-        cmdName                       OCTET STRING              
+        cmdName                       OCTET STRING,
+        cmdOutMatchString             OCTET STRING
     } 
 
   cmdIndex OBJECT-TYPE
@@ -76,6 +77,13 @@ SUBAGENT-SHELL-EXEC-COMMAND MODULE-IDENTITY
     STATUS      current
     DESCRIPTION "command arguments."
     ::= { execCommandEntry 5 }
+
+  cmdOutMatchString OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "matched pattern string."
+    ::= { execCommandEntry 6 }
 
   cmdFuncExecTime OBJECT-TYPE
     SYNTAX      OCTET STRING
