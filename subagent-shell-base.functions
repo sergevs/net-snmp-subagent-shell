@@ -114,6 +114,8 @@ sub httpResponseMIB {
       }
       $$o{"httpRespCode.$i"} = ( split )[2] if ( /^< HTTP\// );
     }
+    # don't return unmatch in the case of ERROR http code
+    $$o{"httpRespMatched.$i"} = 0 if ( defined($$o{"httpRespCode.$i"}) and $$o{"httpRespCode.$i"} > 307 );
     my $cmd_r = $? >> 8;
     $$o{"httpRespIndex.$i"} = $i;
     $$o{"httpRespCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
