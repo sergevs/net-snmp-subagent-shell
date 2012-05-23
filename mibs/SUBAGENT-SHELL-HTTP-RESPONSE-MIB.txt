@@ -34,7 +34,8 @@ SUBAGENT-SHELL-HTTP-RESPONSE MODULE-IDENTITY
         httpRespCode                    Integer32, 
         httpRespCmdExecTime             OCTET STRING,              
         httpRespCmdExecStatus           Integer32,
-        httpRespUrl                     OCTET STRING              
+        httpRespUrl                     OCTET STRING,              
+        httpRespMatchString             OCTET STRING
     } 
 
   httpRespIndex OBJECT-TYPE
@@ -84,6 +85,13 @@ SUBAGENT-SHELL-HTTP-RESPONSE MODULE-IDENTITY
     STATUS      current
     DESCRIPTION "curl command arguments."
     ::= { httpResponseEntry 6 }
+
+  httpRespMatchString OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "matched pattern string."
+    ::= { httpResponseEntry 7 }
 
   httpRespFuncExecTime OBJECT-TYPE
     SYNTAX      OCTET STRING

@@ -9,7 +9,7 @@
 <!--
 <function id="ip_conntrackMIB"/>
 <function id="httpResponseMIB">
-  <args curl="m.google.com" match="Country" description="google"/>
+  <args curl="m.google.com" match="session=(\d+)" description="google"/>
   <args curl="mail.google.com" description="mail"/>
 </function>
 <function id="apacheStatusMIB">
@@ -17,7 +17,7 @@
   <args status_url="localhost/server-status?auto"/>
 </function>
 <function id="execCommandMIB">
-  <args cmd="ls -alh" match="afile" description="looking for afile"/>
+  <args cmd="ls -alh" match="total (.*)$" description="total"/>
   <args cmd="find" match="afile" description="looking for afile in subtree"/>
 </function>
 <function id="dnsLookUpMIB">
