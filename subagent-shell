@@ -201,6 +201,7 @@ sub readConfig {
     open(S_CONFIG,"$f_config") or die;
     while(<S_CONFIG>) {
       chomp;
+      s/^\s+//;
       next if ( /^(#|\s*$)/ );
       my @c=split /=/, $_, 2;
       die "error $#c" if $#c != 1;
