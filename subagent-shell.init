@@ -2,7 +2,7 @@
 #
 # messagebus:   The snmpd subagent 
 #
-# chkconfig:    345 22 85 
+# chkconfig:    345 51 49 
 # description:  This is a daemon extend standard snmp functionality with user defined MIB
 #
 # processname: subagent-shell

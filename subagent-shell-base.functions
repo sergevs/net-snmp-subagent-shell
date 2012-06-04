@@ -53,38 +53,41 @@ sub apacheStatusMIB {
     my $ts=gettimeofday();
     foreach (`$cmd $a->{'status_url'}`) {
       chomp;
-      my $s=$_;
       if ( /Scoreboard/ ) {
+        my $s=(split )[1];
         $$o{"apsWaitingForConnection.$i"}=$s=~tr/_/_/; 
         $$o{"apsSendingReply.$i"}=$s=~tr/W/W/; 
         $$o{"apsReadingRequest.$i"}=$s=~tr/R/R/; 
         $$o{"apsKeepAlive.$i"}=$s=~tr/K/K/; 
-        $$o{"apsDNSLookup.$i"}=$s=~tr/D/D/; 
+        $$o{"apsOpenSlots.$i"}=$s=~tr/././; 
+        $$o{"apsOtherSlots.$i"}=$s=~tr/DCLGIS//; 
       } elsif ( /^Total Accesses/ ) {
-        $$o{"apsTotalAccesses.$i"} = ( split /: /, $s )[1];
+        $$o{"apsTotalAccesses.$i"} = ( split /: / )[1];
       } elsif ( /^CPULoad/ ) {
-        $$o{"apsCpuLoad.$i"} = ( split /: /, $s )[1];
+        $$o{"apsCpuLoad.$i"} = ( split /: / )[1];
       } elsif ( /^Uptime/ ) {
-        $$o{"apsUptime.$i"} = ( split /: /, $s )[1];
+        $$o{"apsUptime.$i"} = ( split /: / )[1];
       } elsif ( /^BusyWorkers/ ) {
-        $$o{"apsBusyWorkers.$i"} = ( split /: /, $s )[1];
+        $$o{"apsBusyWorkers.$i"} = ( split /: / )[1];
       } elsif ( /^IdleWorkers/ ) {
-        $$o{"apsIdleWorkers.$i"} = ( split /: /, $s )[1];
+        $$o{"apsIdleWorkers.$i"} = ( split /: / )[1];
       } elsif ( /^ReqPerSec/ ) {
-        $$o{"apsReqPersSec.$i"} = ( split /: /, $s )[1];
+        $$o{"apsReqPersSec.$i"} = ( split /: / )[1];
       } elsif ( /^BytesPerSec/ ) {
-        $$o{"apsBytesPerSec.$i"} = ( split /: /, $s )[1];
+        $$o{"apsBytesPerSec.$i"} = ( split /: / )[1];
       } elsif ( /^BytesPerReq/ ) {
-        $$o{"apsBytesPerReq.$i"} = ( split /: /, $s )[1];
+        $$o{"apsBytesPerReq.$i"} = ( split /: / )[1];
       }
     }
+
     my $cmd_r = $? >> 8;
     $$o{"apsIndex.$i"} = $i;
     $$o{"apsCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"apsCmdExecStatus.$i"} = $cmd_r;
     $$o{"apsUrl.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'status_url'}]";
-    $$o{"apsWorkersUsage.$i"} = sprintf('%.2f',$$o{"apsBusyWorkers.$i"}*100/($$o{"apsBusyWorkers.$i"}+$$o{"apsIdleWorkers.$i"})) 
-          if defined($$o{"apsBusyWorkers.$i"} ) and $$o{"apsIdleWorkers.$i"};
+    my $allslots = $$o{"apsWaitingForConnection.$i"} + $$o{"apsSendingReply.$i"} + $$o{"apsReadingRequest.$i"} + $$o{"apsKeepAlive.$i"} + $$o{"apsOtherSlots.$i"} + $$o{"apsOpenSlots.$i"};
+    my $busyslots = $$o{"apsSendingReply.$i"} + $$o{"apsReadingRequest.$i"} + $$o{"apsKeepAlive.$i"} + $$o{"apsOtherSlots.$i"};
+    $$o{"apsSlotsUsage.$i"} = sprintf('%.2f', $busyslots*100/$allslots );
     $r = $cmd_r if $cmd_r;
     $i++;
   }
@@ -141,7 +144,7 @@ sub ntpSyncMIB {
     $v=(split )[9] if ( /time server/ );
   }
   my $r = $? >> 8;
-  $$o{'ntpSyncStatus'} = sprintf('%.3f', $v);
+  $$o{'ntpSyncStatus'} = sprintf('%.3f', $v) if defined($v);
   $$o{'ntpSyncServer'} = $cfg->{'args'}[0]->{'server'};
   $$o{'ntpSyncFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'ntpSyncExecStatus'} = $r;
@@ -242,7 +245,7 @@ sub lastLoginsMIB {
 
   foreach  (`w -h`) {
     chomp;
-    $$o{"loggedInUserIndex.$i"} = $i;
+#    $$o{"loggedInUserIndex.$i"} = $i;
     $$o{"loggedInUserInfo.$i"} = $_;
     $i++;
   }
@@ -260,7 +263,7 @@ sub lastLoginsMIB {
       next;
     }
 
-    $$o{"lastUserIndex.$i"} = $i;
+#    $$o{"lastUserIndex.$i"} = $i;
     $$o{"lastUserInfo.$i"} = $_;
     $i++;
   }

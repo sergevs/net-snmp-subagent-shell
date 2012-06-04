@@ -135,9 +135,7 @@ sub logMessage {
   my $level = shift;
   my $msg = shift;
   if ( $config->{'log_level'} && $config->{'log_level'} >= $level ) {
-    openlog( "subagent-shell", 'pid', LOG_DAEMON );
     syslog ( $level, $msg );
-    closelog;
   }
   print STDERR "$msg\n" if defined($config->{'log_to_console'}) && $config->{'log_to_console'} != 0;
 }
@@ -146,6 +144,10 @@ sub readConfig {
   $config->{'log_level'} = LOG_INFO;
   logMessage(LOG_INFO, "Reading config ...");
   logMessage(LOG_DEBUG, "loading main config ${subAgentDir}subagent-shell-conf.xml");
+  if ( ! -f "${subAgentDir}subagent-shell-conf.xml" ) {
+    logMessage(LOG_ERR, "${subAgentDir}subagent-shell-conf.xml does not exists.Terminating");
+    exit(1) 
+  }
   my $x = XML::Simple->new();
   $config=$x->XMLin("${subAgentDir}subagent-shell-conf.xml");
   $config->{'log_to_console'} = 1 if $opt->{verbose};
@@ -155,8 +157,6 @@ sub readConfig {
   $agentMib{functionsFailedCount}=$config->{'functionsFailedCount'};
   $agentMib{timeStamp}=$config->{'timeStamp'};
   $agentMib{totalExecTime}=$config->{'totalExecTime'};
-  
-  $reg_oid=$SNMP::MIB{$agentMib{rootMIB}}->{'objectID'};
 
 # load extention functions
   foreach my $ff ( glob "${subAgentDir}*.functions" ) {
@@ -243,7 +243,8 @@ sub pollerHandler {
 sub daemonize {
   my $pid = fork();
   if (! defined $pid) { die "fork failed: $!"; }
-  if ($pid != 0) {
+  if ( $pid != 0 ) {
+    closelog();
     exit 0;
   }
 
@@ -266,6 +267,8 @@ sub daemonize {
 {
   setlocale(LC_ALL,'C'); # avoid unexpected formatting
   my $amode = ($0=~'snmp_perl.pl')?0:1;
+  openlog( "subagent-shell", 'pid', LOG_DAEMON );
+  readConfig();
   if ( $opt->{daemon} ) {
     logMessage(LOG_WARNING, "can't become daemon in subagent mode") if ( $amode == 0 );
     daemonize();
@@ -274,13 +277,14 @@ sub daemonize {
     $SIG{INT} = sub {
       $running = 0;
       logMessage(LOG_INFO, "Interrupted by user.");
+      closelog();
     };
     $SIG{TERM} = sub {
       $running = 0;
       logMessage(LOG_INFO, "Terminated by user.");
+      closelog();
     };
     $SIG{HUP} = sub {
-      readConfig();
       logMessage(LOG_INFO, "Received HUP, doing nothing.");
     };
   }
@@ -292,7 +296,7 @@ sub daemonize {
   SNMP::initMib(); # parses default list of Mib modules from default dirs
   SNMP::addMibDirs("$mibDir");
   SNMP::loadModules("ALL");
-  readConfig();
+  $reg_oid=$SNMP::MIB{$agentMib{rootMIB}}->{'objectID'};
 
   unless (defined($shm_id=shmget(IPC_PRIVATE, $config->{'shm_size'}, S_IRWXU)))   { logMessage(LOG_ERR, "can't shmget $!"); exit 1; }
   unless (defined($sem_id=semget($shm_id, 1, IPC_CREAT | 0700)))      { logMessage(LOG_ERR, "can't semctl $!"); exit 1; }
@@ -345,6 +349,7 @@ sub daemonize {
           } else {
             $fStatus{$agentMib{functionsFailedCount}} += 1;
           } 
+          $fStatus{$agentMib{functionsCount}} += 1;
         }
       }
   #   add pollerInfo
@@ -379,7 +384,8 @@ sub daemonize {
           logMessage(LOG_INFO, "main process died, shutdown");
           shmctl($shm_id, IPC_RMID, 0);
           semctl($sem_id, 0, IPC_RMID, 0);
-          exit; 
+          closelog;
+          exit 0; 
         } else {
           logMessage(LOG_INFO, "main process is up, resuming");
         }

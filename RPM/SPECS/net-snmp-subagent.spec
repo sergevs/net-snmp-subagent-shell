@@ -45,12 +45,14 @@ cd snmpd-agent
 %_sysconfdir/sysconfig/subagent-shell.options
 
 %post
+# FIX startup/exit priority for versions before 2.1.0.1
+[ -s /etc/rc3.d/S22subagent-shell ] && /sbin/chkconfig --del subagent-shell 
 /sbin/chkconfig --add subagent-shell
 grep -P '^perl do.*/etc/snmp/subagent/snmpd-poller-agent' /etc/snmp/snmpd.conf
 if [ $? == 0 ]; then
+# removal embedded snmpd-poller for versions before 2.0.0.0
   sed -i -e 's!^\(perl do "/etc/snmp/subagent/snmpd-poller-agent\)!#\1!' /etc/snmp/snmpd.conf
   /sbin/service snmpd condrestart >/dev/null 2>&1 || :
-  /sbin/service subagent-shell start >/dev/null 2>&1 || :
 fi
 if [ "$1" -ge "1" ]; then
   /sbin/service subagent-shell condrestart >/dev/null 2>&1 || :
@@ -66,5 +68,4 @@ exit 0
 
 %changelog
 * Wed Nov 23 2011 Serge <abrikus@gmail.com> 1.1.0.0-ssv1
-- Checked out revision 9. from snmpd-agent/tags/1.1.0.0/
-
+-- Initial release
