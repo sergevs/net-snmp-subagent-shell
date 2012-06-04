@@ -42,11 +42,12 @@ SUBAGENT-SHELL-APACHE-STATUS MODULE-IDENTITY
         apsSendingReply            Gauge32, 
         apsReadingRequest          Gauge32, 
         apsKeepAlive               Gauge32, 
-        apsDNSLookup               Gauge32,
+        apsOtherSlots              Gauge32,
         apsCmdExecTime             OCTET STRING,              
         apsCmdExecStatus           Integer32,
         apsUrl                     OCTET STRING,
-        apsWorkersUsage            OCTET STRING
+        apsSlotsUsage              OCTET STRING,
+        apsOpenSlots               Gauge32
     } 
 
   apsIndex OBJECT-TYPE
@@ -116,35 +117,36 @@ SUBAGENT-SHELL-APACHE-STATUS MODULE-IDENTITY
     SYNTAX      Gauge32
     MAX-ACCESS  read-only
     STATUS      current
-    DESCRIPTION "Number of waiting for connections threads."
+    DESCRIPTION "Number of waiting for connections slots('_' Waiting for Connection)."
     ::= { apacheStatusEntry 10 }
 
   apsSendingReply OBJECT-TYPE
     SYNTAX      Gauge32
     MAX-ACCESS  read-only
     STATUS      current
-    DESCRIPTION "Number of sending reply threads."
+    DESCRIPTION "Number of sending reply slots('W' Sending Reply)."
     ::= { apacheStatusEntry 11 }
 
   apsReadingRequest OBJECT-TYPE
     SYNTAX      Gauge32
     MAX-ACCESS  read-only
     STATUS      current
-    DESCRIPTION "Number of reading reply threads."
+    DESCRIPTION "Number of reading reply slots('R' Reading Request)."
     ::= { apacheStatusEntry 12 }
 
   apsKeepAlive OBJECT-TYPE
     SYNTAX      Gauge32
     MAX-ACCESS  read-only
     STATUS      current
-    DESCRIPTION "Number of keep alive threads."
+    DESCRIPTION "Number of keep alive slots('K' Keepalive (read))."
     ::= { apacheStatusEntry 13 }
 
-  apsDNSLookup OBJECT-TYPE
+  apsOtherSlots  OBJECT-TYPE
     SYNTAX      Gauge32
     MAX-ACCESS  read-only
     STATUS      current
-    DESCRIPTION "Number of DNS lookups threads."
+    DESCRIPTION "Number of other slots ('C' Closing connection, 'L' Logging, 'G' Gracefully finishingpen slots with no current process, 
+                'S' Starting up,'D' DNS Lookup, 'I' Idle cleanup of worker)."
     ::= { apacheStatusEntry 14 }
 
   apsCmdExecTime OBJECT-TYPE
@@ -168,13 +170,19 @@ SUBAGENT-SHELL-APACHE-STATUS MODULE-IDENTITY
     DESCRIPTION "Status url."
     ::= { apacheStatusEntry 17 }
 
-  apsWorkersUsage  OBJECT-TYPE
+  apsSlotsUsage  OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
-    DESCRIPTION "Percantage of workers usage."
+    DESCRIPTION "Percantage of slots usage."
     ::= { apacheStatusEntry 18 }
 
+  apsOpenSlots  OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of  open slots with no current process."
+    ::= { apacheStatusEntry 19 }
 
   apsFuncExecTime OBJECT-TYPE
     SYNTAX      OCTET STRING
