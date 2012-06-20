@@ -85,9 +85,11 @@ sub apacheStatusMIB {
     $$o{"apsCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"apsCmdExecStatus.$i"} = $cmd_r;
     $$o{"apsUrl.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'status_url'}]";
-    my $allslots = $$o{"apsWaitingForConnection.$i"} + $$o{"apsSendingReply.$i"} + $$o{"apsReadingRequest.$i"} + $$o{"apsKeepAlive.$i"} + $$o{"apsOtherSlots.$i"} + $$o{"apsOpenSlots.$i"};
-    my $busyslots = $$o{"apsSendingReply.$i"} + $$o{"apsReadingRequest.$i"} + $$o{"apsKeepAlive.$i"} + $$o{"apsOtherSlots.$i"};
-    $$o{"apsSlotsUsage.$i"} = sprintf('%.2f', $busyslots*100/$allslots );
+    if ( ! $cmd_r ) {
+      my $allslots = $$o{"apsWaitingForConnection.$i"} + $$o{"apsSendingReply.$i"} + $$o{"apsReadingRequest.$i"} + $$o{"apsKeepAlive.$i"} + $$o{"apsOtherSlots.$i"} + $$o{"apsOpenSlots.$i"};
+      my $busyslots = $$o{"apsSendingReply.$i"} + $$o{"apsReadingRequest.$i"} + $$o{"apsKeepAlive.$i"} + $$o{"apsOtherSlots.$i"};
+      $$o{"apsSlotsUsage.$i"} = sprintf('%.2f', $busyslots*100/$allslots );
+    }
     $r = $cmd_r if $cmd_r;
     $i++;
   }

@@ -145,7 +145,6 @@ sub logMessage {
 }
 
 sub readConfig {
-  $config->{'log_level'} = LOG_INFO;
   logMessage(LOG_INFO, "Reading config ...");
   logMessage(LOG_DEBUG, "loading main config ${subAgentDir}subagent-shell-conf.xml");
   if ( ! -f "${subAgentDir}subagent-shell-conf.xml" ) {
@@ -283,7 +282,7 @@ sub daemonize {
 # ===== main =====
 {
   setlocale(LC_ALL,'C');      # avoid unexpected formatting
-  $config->{'log_level'} = 6; # set default logging until it's defined in config
+  $config->{'log_level'} = LOG_NOTICE; # set default logging until it's defined in config
   my $amode = ($0=~'snmp_perl.pl')?0:1;
   openlog( "subagent-shell", 'pid', LOG_DAEMON );
   if ( defined($opt->{log_file}) and not open( LOGFILE, ">>", $opt->{log_file} ) ){
@@ -305,23 +304,7 @@ sub daemonize {
     }
   }  
   readConfig();
-  if ( $opt->{daemon} ) {
-    logMessage(LOG_WARNING, "can't become daemon in subagent mode") if ( $amode == 0 );
-    daemonize();
-  } 
-  if ( $amode == 1 ) {
-    $SIG{INT} = sub {
-      $running = 0;
-      logMessage(LOG_INFO, "Interrupted by user.");
-    };
-    $SIG{TERM} = sub {
-      $running = 0;
-      logMessage(LOG_INFO, "Terminated by user.");
-    };
-    $SIG{HUP} = sub {
-      logMessage(LOG_INFO, "Received HUP, doing nothing.");
-    };
-  }
+
   my $agent = new NetSNMP::agent('Name' => "subagent-shell", 'AgentX' => $amode  );
   if ($opt->{agentx_socket} ne '' && $opt->{agentx_socket} ne '-') {
     netsnmp_ds_set_string(NETSNMP_DS_APPLICATION_ID, NETSNMP_DS_AGENT_X_SOCKET, $opt->{agentx_socket});
@@ -331,6 +314,24 @@ sub daemonize {
   SNMP::addMibDirs("$mibDir");
   SNMP::loadModules("ALL");
   $reg_oid=$SNMP::MIB{$agentMib{rootMIB}}->{'objectID'};
+
+  if ( $opt->{daemon} ) {
+    logMessage(LOG_WARNING, "can't become daemon in subagent mode") if ( $amode == 0 );
+    daemonize();
+  } 
+  if ( $amode == 1 ) {
+    $SIG{INT} = sub {
+      $running = 0;
+      logMessage(LOG_NOTICE, "Interrupted by user.");
+    };
+    $SIG{TERM} = sub {
+      $running = 0;
+      logMessage(LOG_NOTICE, "Terminated by user.");
+    };
+    $SIG{HUP} = sub {
+      logMessage(LOG_NOTICE, "Received HUP, doing nothing.");
+    };
+  }
 
   unless (defined($shm_id=shmget(IPC_PRIVATE, $config->{'shm_size'}, S_IRWXU)))   { logMessage(LOG_ERR, "can't shmget $!"); exit 1; }
   unless (defined($sem_id=semget($shm_id, 1, IPC_CREAT | 0700)))      { logMessage(LOG_ERR, "can't semctl $!"); exit 1; }
@@ -380,11 +381,16 @@ sub daemonize {
       my $s_time = scalar gettimeofday();
       foreach my $config_data ( @functions_config ){
         foreach my $func ( keys (%{$config_data->{'function'}}) ){
-          if ( &$func( \%otree, $config_data->{'function'}->{$func} ) == 0 ) { 
-            $fStatus{$agentMib{functionsSuccessCount}} += 1;
-          } else {
+          eval {
+            if ( &$func( \%otree, $config_data->{'function'}->{$func} ) == 0 ) { 
+              $fStatus{$agentMib{functionsSuccessCount}} += 1;
+            } else {
+              $fStatus{$agentMib{functionsFailedCount}} += 1;
+            } 
+          } or do { 
             $fStatus{$agentMib{functionsFailedCount}} += 1;
-          } 
+            logMessage(LOG_WARNING, "function $func terminated abnormally");
+          };
           $fStatus{$agentMib{functionsCount}} += 1;
         }
       }
