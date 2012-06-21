@@ -3,6 +3,7 @@ SUBAGENT-SHELL-PROC-STAT-MIB DEFINITIONS ::= BEGIN
 IMPORTS
   MODULE-IDENTITY, enterprises, Gauge32 FROM SNMPv2-SMI
   TimeStamp FROM SNMPv2-TC
+  KBytes FROM HOST-RESOURCES-MIB
   functionsEntry FROM SUBAGENT-SHELL-MIB;
 
 SUBAGENT-SHELL-PROC-STAT MODULE-IDENTITY
@@ -60,4 +61,32 @@ SUBAGENT-SHELL-PROC-STAT MODULE-IDENTITY
     STATUS      current
     DESCRIPTION "Exec code."
     ::= { SUBAGENT-SHELL-PROC-STAT 7 }
+
+  procInfoTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF procInfoEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of apache status ."
+    ::= { SUBAGENT-SHELL-PROC-STAT 8 }
+
+  procInfoEntry OBJECT-TYPE
+    SYNTAX      procInfoEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "An entry containing management information applicable to apache server status"
+    INDEX      { procIndex }
+    ::= { procInfoTable 1 }
+
+  procInfoEntry ::=
+    SEQUENCE {
+        procVirtualMemory KBytes
+    }
+
+  procVirtualMemory OBJECT-TYPE
+    SYNTAX      KBytes
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Virtual memory of processes"
+    ::= { procInfoEntry 1 }
+
 END

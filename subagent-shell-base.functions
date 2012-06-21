@@ -169,6 +169,13 @@ sub procCountMIB {
   $$o{'procSleeping'} = $sleeping;
   $$o{'procStopped'} = $stopped;
   $$o{'procZombie'} = $zombie;
+
+  foreach(`ps axho pid,vsize`) {
+    chomp;
+    my ($pid, $vsize) = split;
+    $$o{"procVirtualMemory.$pid"} = $vsize;
+  }
+  $r = $? >> 8 if ($? >> 8);
   $$o{'procFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'procExecStatus'} = $r;
   return $r;
