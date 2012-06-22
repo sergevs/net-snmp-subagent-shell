@@ -156,26 +156,26 @@ sub ntpSyncMIB {
 sub procCountMIB {
   my $o=shift;
   my $t=gettimeofday();
-  my $cmd='top -b -n1 | awk \'/^Tasks/{print $2 " " $4 " " $6 " " $8 " " $10}\'';
-  my ($total, $running, $sleeping, $stopped, $zombie);
+  $$o{'procTotal'} =    0;
+  $$o{'procRunning'} =  0;
+  $$o{'procSleeping'} = 0;
+  $$o{'procStopped'} =  0;
+  $$o{'procZombie'} =   0;
+  $$o{'procUninterruptible'} =   0;
 
-  foreach (`$cmd`) {
+  foreach(`ps axho pid,vsize,stat`) {
     chomp;
-    ($total, $running, $sleeping, $stopped, $zombie)=split;
+    my ($pid, $vsize, $stat) = split;
+    $$o{"procVirtualMemory.$pid"} = $vsize;
+
+    $$o{'procTotal'}++;
+    $$o{'procRunning'}++  if $stat =~ /^R/;
+    $$o{'procSleeping'}++ if $stat =~ /^S/;
+    $$o{'procStopped'}++  if $stat =~ /^T/;
+    $$o{'procZombie'}++   if $stat =~ /^Z/;
+    $$o{'procUninterruptible'}++  if $stat =~ /^D/;
   }
   my $r = $? >> 8;
-  $$o{'procTotal'} = $total;
-  $$o{'procRunning'} = $running;
-  $$o{'procSleeping'} = $sleeping;
-  $$o{'procStopped'} = $stopped;
-  $$o{'procZombie'} = $zombie;
-
-  foreach(`ps axho pid,vsize`) {
-    chomp;
-    my ($pid, $vsize) = split;
-    $$o{"procVirtualMemory.$pid"} = $vsize;
-  }
-  $r = $? >> 8 if ($? >> 8);
   $$o{'procFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'procExecStatus'} = $r;
   return $r;

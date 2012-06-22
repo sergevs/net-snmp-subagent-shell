@@ -113,6 +113,7 @@ sub unpackMessage {
   ( $$prevTimeStamp, %shm_data )= unpack( 'S/A* S/(S/A* S/A*)', $shm_message );
 
   my %typeMap = ( 'GAUGE'=>ASN_GAUGE,'TICKS'=>ASN_TIMETICKS,'INTEGER'=>ASN_INTEGER, 'INTEGER32'=>ASN_INTEGER,'COUNTER64'=>ASN_COUNTER64,'OCTETSTR'=>ASN_OCTET_STR );
+  %{$oData} = ();
   while ( my($k,$v) = each %shm_data) { 
     if ( $k !~ /^\./ ) { 
       # a mib variable with or without index

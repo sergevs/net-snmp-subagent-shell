@@ -48,19 +48,12 @@ SUBAGENT-SHELL-PROC-STAT MODULE-IDENTITY
     DESCRIPTION "Number of zombie processes."
     ::= { SUBAGENT-SHELL-PROC-STAT 5 }
 
-  procFuncExecTime OBJECT-TYPE
-    SYNTAX      OCTET STRING
+  procUninterruptible  OBJECT-TYPE
+    SYNTAX      Gauge32
     MAX-ACCESS  read-only
     STATUS      current
-    DESCRIPTION "Function execution time."
+    DESCRIPTION "Number of uninterruptible processes."
     ::= { SUBAGENT-SHELL-PROC-STAT 6 }
-
-  procExecStatus OBJECT-TYPE
-    SYNTAX      Integer32
-    MAX-ACCESS  read-only
-    STATUS      current
-    DESCRIPTION "Exec code."
-    ::= { SUBAGENT-SHELL-PROC-STAT 7 }
 
   procInfoTable OBJECT-TYPE
     SYNTAX      SEQUENCE OF procInfoEntry
@@ -88,5 +81,20 @@ SUBAGENT-SHELL-PROC-STAT MODULE-IDENTITY
     STATUS      current
     DESCRIPTION "Virtual memory of processes"
     ::= { procInfoEntry 1 }
+
+  procFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-PROC-STAT 10 }
+
+  procExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-PROC-STAT 11 }
+
 
 END
