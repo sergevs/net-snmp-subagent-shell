@@ -110,12 +110,11 @@ sub httpResponseMIB {
     my $ts=gettimeofday();
     $$o{"httpRespMatched.$i"} = defined($a->{'match'})?2:0;
     $$o{"httpRespMatchString.$i"} = '';
-
-    foreach (`($cmd $a->{'curl'} | sed 's/^/STDOUT:/') 2>&1`) {
+    foreach (`($cmd '$a->{'curl'}' | sed 's/^/STDOUT:/') 2>&1`) {
       chomp;
       if ( /^STDOUT/ and defined($a->{'match'}) and /$a->{'match'}/ ) {
         $$o{"httpRespMatched.$i"} = 1;
-        $$o{"httpRespMatchString.$i"} = $1;
+        $$o{"httpRespMatchString.$i"} = $1 if defined($1);
       }
       $$o{"httpRespCode.$i"} = ( split )[2] if ( /^< HTTP\// );
     }
