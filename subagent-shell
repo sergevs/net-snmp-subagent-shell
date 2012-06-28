@@ -205,7 +205,13 @@ sub pollerHandler {
   semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
   unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
   semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
-  unpackMessage( $shm_message, \%oData, \@sortedoids, \$dataTimeStamp );
+  eval {
+    unpackMessage( $shm_message, \%oData, \@sortedoids, \$dataTimeStamp );
+    1;
+  } or do {
+    logMessage(LOG_ERR, "exception caught in unpack message @$ ");
+  };
+
   return if ($#sortedoids < 0 );
 
 #  foreach my $k(@sortedoids) {
@@ -349,7 +355,12 @@ sub daemonize {
     logMessage (LOG_NOTICE, 'AgentX is initialized in ' . ($amode==0?'subagent':'standalone') . ' mode' ); 
     if ( $amode == 1) {
       while($running) {
-        $agent->agent_check_and_process(1);
+        eval {
+          $agent->agent_check_and_process(1);
+          1;
+        } or do {
+          logMessage(LOG_ERR,"exception caught in agent_check_and_process @$ ");
+        };
       } 
       logMessage (LOG_NOTICE, 'AgentX shutdown' ); 
       $agent->shutdown();
