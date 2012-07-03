@@ -209,7 +209,7 @@ sub pollerHandler {
     unpackMessage( $shm_message, \%oData, \@sortedoids, \$dataTimeStamp );
     1;
   } or do {
-    logMessage(LOG_ERR, "exception caught in unpack message @$ ");
+    logMessage(LOG_ERR, "exception caught in unpack message " . @$);
   };
 
   return if ($#sortedoids < 0 );
@@ -359,7 +359,7 @@ sub daemonize {
           $agent->agent_check_and_process(1);
           1;
         } or do {
-          logMessage(LOG_ERR,"exception caught in agent_check_and_process @$ ");
+          logMessage(LOG_ERR,"exception caught in agent_check_and_process " . @$);
         };
       } 
       logMessage (LOG_NOTICE, 'AgentX shutdown' ); 
