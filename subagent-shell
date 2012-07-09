@@ -209,7 +209,7 @@ sub pollerHandler {
     unpackMessage( $shm_message, \%oData, \@sortedoids, \$dataTimeStamp );
     1;
   } or do {
-    logMessage(LOG_ERR, "exception caught in unpack message @$ ");
+    logMessage(LOG_ERR, "exception caught in unpack message " . @$);
   };
 
   return if ($#sortedoids < 0 );
@@ -359,7 +359,7 @@ sub daemonize {
           $agent->agent_check_and_process(1);
           1;
         } or do {
-          logMessage(LOG_ERR,"exception caught in agent_check_and_process @$ ");
+          logMessage(LOG_ERR,"exception caught in agent_check_and_process " . @$);
         };
       } 
       logMessage (LOG_NOTICE, 'AgentX shutdown' ); 
@@ -409,6 +409,7 @@ sub daemonize {
   #   add pollerInfo
       pollerInfo(\%otree,\%fStatus,$s_time);
       $shm_message = pack( 'S/A* S(S/A* S/A*)*', (split /\(|\)/, $otree{$agentMib{timeStamp}})[1], scalar keys( %otree ), %otree );
+      logMessage(LOG_ERR, "data size " . length($shm_message) ." is greater than configured shm_size " . $config->{'shm_size'} ) if length($shm_message) >= $config->{'shm_size'};
   #    while (my ($k,$v) = each %otree) { logMessage(LOG_DEBUG, "otree: $k => $v" );}
       if ( $opt->{verbose} >1 ) {
         my %oData;
