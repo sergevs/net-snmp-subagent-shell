@@ -240,7 +240,10 @@ sub dnsLookUpMIB {
 
 sub osInfoMIB {
   my $o=shift;
-  $$o{'osinfoRelease'} = `head -1 /etc/redhat-release` if ( -f '/etc/redhat-release' );
+  if ( -f '/etc/redhat-release' ) {
+    $$o{'osinfoRelease'} = `head -1 /etc/redhat-release`;
+    chomp $$o{'osinfoRelease'};
+  }
   $$o{'osinfoSoftwareLastChange'} =  (stat('/var/lib/rpm/Packages'))[9] if ( -f '/var/lib/rpm/Packages' );
   return 0;  
 }
@@ -253,7 +256,6 @@ sub lastLoginsMIB {
 
   foreach  (`w -h`) {
     chomp;
-#    $$o{"loggedInUserIndex.$i"} = $i;
     $$o{"loggedInUserInfo.$i"} = $_;
     $i++;
   }
