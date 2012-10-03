@@ -326,9 +326,9 @@ sub rndcStatMIB {
       chomp;
       if ( /successful answer/ ) {
         $$o{"rndcSuccess"} = ( split /\s+/)[1];
-      } elsif ( /authoritative answer/ ) {
+      } elsif ( /in authoritative answer/ ) {
         $$o{"rndcAuthoritative"} = ( split /\s+/)[1];
-      } elsif ( /non authoritative answer/ ) {
+      } elsif ( /in non authoritative answer/ ) {
         $$o{"rndcNonAuthoritative"} = ( split /\s+/)[1];
       } elsif ( /in nxrrset/ ) {
         $$o{"rndcNxrrset"} = ( split /\s+/)[1];
@@ -352,6 +352,23 @@ sub rndcStatMIB {
   }
   $$o{'rndcFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'rndcExecStatus'} = $r;
+  return $r;
+}
+
+sub mailqMIB {
+  my $o=shift;
+  my $c=0;
+  my $r=0;
+  my $t=gettimeofday();
+  foreach (`mailq`) {
+    chomp;
+    last if ( /Mail queue is empty/ );
+    $c++ if ( /^[\d[A-F]{11}/ );
+  }
+  $r = $? >> 8;
+  $$o{'mailqCount'} = $c;
+  $$o{'mailqFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'mailqExecStatus'} = $r;
   return $r;
 }
 
