@@ -315,4 +315,44 @@ sub execCommandMIB {
   return $r;
 }
 
+sub rndcStatMIB {
+  my $o=shift;
+  my $cfg=shift;
+  my $t=gettimeofday();
+  my $r;
+
+  if (-f "$cfg->{'args'}[0]->{'stat_file'}") {
+    foreach (`cat $cfg->{'args'}[0]->{'stat_file'}`) {
+      chomp;
+      if ( /successful answer/ ) {
+        $$o{"rndcSuccess"} = ( split /\s+/)[1];
+      } elsif ( /authoritative answer/ ) {
+        $$o{"rndcAuthoritative"} = ( split /\s+/)[1];
+      } elsif ( /non authoritative answer/ ) {
+        $$o{"rndcNonAuthoritative"} = ( split /\s+/)[1];
+      } elsif ( /in nxrrset/ ) {
+        $$o{"rndcNxrrset"} = ( split /\s+/)[1];
+      } elsif ( /in SERVFAIL/ ) {
+        $$o{"rndcServfail"} = ( split /\s+/)[1];
+      } elsif ( /in NXDOMAIN/ ) {
+        $$o{"rndcNxdomain"} = ( split /\s+/)[1];
+      } elsif ( /caused recursion/ ) {
+        $$o{"rndcRecursion"} = ( split /\s+/)[1];
+      } elsif ( /duplicate queries/ ) {
+        $$o{"rndcDuplicate"} = ( split /\s+/)[1];
+      } elsif ( /queries dropped/ ) {
+        $$o{"rndcDropped"} = ( split /\s+/)[1];
+      } elsif ( /other query failures/ ) {
+        $$o{"rndcOtherFailures"} = ( split /\s+/)[1];
+      }
+    }
+    $r = $? >> 8;
+  } else {
+    $r = -1;
+  }
+  $$o{'rndcFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'rndcExecStatus'} = $r;
+  return $r;
+}
+
 return 1;
