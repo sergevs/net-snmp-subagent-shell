@@ -24,5 +24,9 @@
   <args fqdn="www.google.com"/>
   <args fqdn="mail.google.com"/>
 </function>
+<function id="rndcStatMIB">
+  <args stat_file="/var/named/data/named_stats.txt"/>
+</function>
+<function id="mailqMIB"/>
 -->
 </config>

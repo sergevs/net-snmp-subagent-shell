@@ -320,23 +320,29 @@ sub rndcStatMIB {
   my $cfg=shift;
   my $t=gettimeofday();
   my $r;
+  if (! defined($cfg->{'args'}[0]->{'pre_cmd'}) ) {
+    $cfg->{'args'}[0]->{'pre_cmd'}="rm -f $cfg->{'args'}[0]->{'stat_file'} && /usr/sbin/rndc stats";
+  }
+  `$cfg->{'args'}[0]->{'pre_cmd'}` unless ( $cfg->{'args'}[0]->{'pre_cmd'} eq '' );
+  $r = $? >> 8;
+  return $r if $r; 
 
   if (-f "$cfg->{'args'}[0]->{'stat_file'}") {
     foreach (`cat $cfg->{'args'}[0]->{'stat_file'}`) {
       chomp;
-      if ( /successful answer/ ) {
+      if ( /(^success\s|successful answer)/ ) {
         $$o{"rndcSuccess"} = ( split /\s+/)[1];
       } elsif ( /in authoritative answer/ ) {
         $$o{"rndcAuthoritative"} = ( split /\s+/)[1];
       } elsif ( /in non authoritative answer/ ) {
         $$o{"rndcNonAuthoritative"} = ( split /\s+/)[1];
-      } elsif ( /in nxrrset/ ) {
+      } elsif ( /(^nxrrset\s|in nxrrset)/ ) {
         $$o{"rndcNxrrset"} = ( split /\s+/)[1];
-      } elsif ( /in SERVFAIL/ ) {
+      } elsif ( /(^failure\s|in SERVFAIL)/ ) {
         $$o{"rndcServfail"} = ( split /\s+/)[1];
-      } elsif ( /in NXDOMAIN/ ) {
+      } elsif ( /(^nxdomain\s|in NXDOMAIN)/ ) {
         $$o{"rndcNxdomain"} = ( split /\s+/)[1];
-      } elsif ( /caused recursion/ ) {
+      } elsif ( /(^recursion\s|caused recursion)/ ) {
         $$o{"rndcRecursion"} = ( split /\s+/)[1];
       } elsif ( /duplicate queries/ ) {
         $$o{"rndcDuplicate"} = ( split /\s+/)[1];
@@ -350,6 +356,12 @@ sub rndcStatMIB {
   } else {
     $r = -1;
   }
+  $$o{"rndcAuthoritative"} = 0 unless defined($$o{"rndcAuthoritative"});
+  $$o{"rndcNonAuthoritative"} = 0 unless defined($$o{"rndcNonAuthoritative"});
+  $$o{"rndcDuplicate"} = 0 unless defined($$o{"rndcDuplicate"});
+  $$o{"rndcDropped"} = 0 unless defined($$o{"rndcDropped"});
+  $$o{"rndcOtherFailures"} = 0 unless defined($$o{"rndcOtherFailures"});
+
   $$o{'rndcFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'rndcExecStatus'} = $r;
   return $r;
