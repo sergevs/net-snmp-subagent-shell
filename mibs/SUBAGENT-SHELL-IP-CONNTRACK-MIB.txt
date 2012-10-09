@@ -36,17 +36,24 @@ SUBAGENT-SHELL-IP-CONNTRACK MODULE-IDENTITY
     DESCRIPTION "Max number of ip conntrack sessions."
    ::= { SUBAGENT-SHELL-IP-CONNTRACK 3 }
 
+  ip-conntrackUsage OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Conntrack tables usage percentage."
+   ::= { SUBAGENT-SHELL-IP-CONNTRACK 4 }
+
   ip-conntrackFuncExecTime OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "Function execution time."
-    ::= { SUBAGENT-SHELL-IP-CONNTRACK 4 }
+    ::= { SUBAGENT-SHELL-IP-CONNTRACK 5 }
 
   ip-conntrackExecStatus OBJECT-TYPE
     SYNTAX      Integer32
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "Exec code."
-    ::= { SUBAGENT-SHELL-IP-CONNTRACK 5 }
+    ::= { SUBAGENT-SHELL-IP-CONNTRACK 6 }
 END
