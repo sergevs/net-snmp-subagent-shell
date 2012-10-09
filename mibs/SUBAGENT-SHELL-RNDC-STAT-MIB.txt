@@ -1,0 +1,105 @@
+SUBAGENT-SHELL-RNDC-STAT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-RNDC-STAT MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL named(bind) rndc statistics MIB"
+  ::= { functionsEntry 10 }
+
+  rndcQueriesStatusEntry OBJECT-TYPE
+    SYNTAX      rndcQueriesStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "Queries status entry."
+    ::= { SUBAGENT-SHELL-RNDC-STAT 1 }
+
+  rndcSuccess OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of queries resulted in successful answer."
+    ::= { rndcQueriesStatusEntry 1 }
+
+  rndcAuthoritative OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of queries resulted in authoritative answer."
+    ::= { rndcQueriesStatusEntry 2 }
+
+  rndcNonAuthoritative OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of queries resulted in non authoritative answer."
+    ::= { rndcQueriesStatusEntry 3 }
+
+  rndcNxrrset OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of queries queries resulted in nxrrset."
+    ::= { rndcQueriesStatusEntry 4 }
+
+  rndcServfail OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of queries resulted in SERVFAIL."
+    ::= { rndcQueriesStatusEntry 5 }
+
+  rndcNxdomain OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of queries resulted in NXDOMAIN."
+    ::= { rndcQueriesStatusEntry 6 }
+
+  rndcRecursion OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of queries caused recursion."
+    ::= { rndcQueriesStatusEntry 7 }
+
+  rndcDuplicate OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of duplicate queries received."
+    ::= { rndcQueriesStatusEntry 8 }
+
+  rndcDropped OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of dropped queries."
+    ::= { rndcQueriesStatusEntry 9 }
+
+  rndcOtherFailures OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of other query failures."
+    ::= { rndcQueriesStatusEntry 10 }
+
+  rndcFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-RNDC-STAT 10 }
+
+  rndcExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-RNDC-STAT 11 }
+END

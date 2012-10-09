@@ -3,7 +3,7 @@
         stale_time="600"
         cmd_timeout="10"
         log_level="5"
-        shm_size="32768"
+        shm_size="65536"
         rootMIB="SUBAGENT-SHELL"
         functionsCount="ssFunctionsCount"
         functionsSuccessCount="ssFunctionsSuccessCount"
