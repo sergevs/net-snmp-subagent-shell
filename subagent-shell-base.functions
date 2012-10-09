@@ -241,12 +241,20 @@ sub dnsLookUpMIB {
 
 sub osInfoMIB {
   my $o=shift;
+  my $r;
+  my $osRelease='';
+  $$o{'osinfoRelease'} = `uname -rm`;
+  $r = $? >> 8;
+  return $r if $r;
+  chomp $$o{'osinfoRelease'};
   if ( -f '/etc/redhat-release' ) {
-    $$o{'osinfoRelease'} = `head -1 /etc/redhat-release`;
-    chomp $$o{'osinfoRelease'};
+    $osRelease = `head -1 /etc/redhat-release`;
+    chomp $osRelease;
   }
+  $r = $? >> 8;
+  $$o{'osinfoRelease'} = "$osRelease $$o{'osinfoRelease'}";
   $$o{'osinfoSoftwareLastChange'} =  (stat('/var/lib/rpm/Packages'))[9] if ( -f '/var/lib/rpm/Packages' );
-  return 0;  
+  return $r;  
 }
 
 sub lastLoginsMIB {
