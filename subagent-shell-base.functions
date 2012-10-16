@@ -181,13 +181,18 @@ sub procCountMIB {
 }
   
 sub ip_conntrackMIB {
-  my $o=shift;
-  my $t=gettimeofday();
-  my $cmd="cat /proc/sys/net/ipv4/netfilter/ip_conntrack_count /proc/sys/net/ipv4/ip_conntrack_max | tr '\n' ' '";
-  my ($loaded,$count, $max, $r);
+  my $o = shift;
+  my $t = gettimeofday();
+  my ($cmd, $count, $max, $r);
 
-  $loaded=(-f "/proc/sys/net/ipv4/ip_conntrack_max")?1:0;
-  if ( $loaded ) {
+  if (-f "/proc/sys/net/ipv4/ip_conntrack_max") {
+    $cmd="cat /proc/sys/net/ipv4/netfilter/ip_conntrack_count /proc/sys/net/ipv4/ip_conntrack_max | tr '\n' ' '";
+  } elsif (-f "/proc/sys/net/netfilter/nf_conntrack_max") {
+    $cmd="cat /proc/sys/net/netfilter/nf_conntrack_count /proc/sys/net/netfilter/nf_conntrack_max | tr '\n' ' '";
+  }
+  
+  if ( defined($cmd) ) {
+    $$o{'ip-conntrackLoaded'} = 1;
     foreach (`$cmd`) {
       chomp;
       ($count, $max)=split;
@@ -199,9 +204,10 @@ sub ip_conntrackMIB {
       $$o{'ip-conntrackUsage'} = sprintf('%.0f', 100*$count/$max);
     }
   } else {
+    $$o{'ip-conntrackLoaded'} = 0;
     $r = 0;
   }
-  $$o{'ip-conntrackLoaded'} = $loaded;
+
   $$o{'ip-conntrackFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'ip-conntrackExecStatus'} = $r;
   return $r;
