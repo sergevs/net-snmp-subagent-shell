@@ -256,6 +256,13 @@ sub osInfoMIB {
   if ( -f '/etc/redhat-release' ) {
     $osRelease = `head -1 /etc/redhat-release`;
     chomp $osRelease;
+  } elsif ( -f '/etc/fedora-release' ) {
+    $osRelease = `head -1 /etc/fedora-release`;
+    chomp $osRelease;
+  } elsif ( -f '/etc/debian_version' ) {
+    $osRelease = `head -1 /etc/debian-version`;
+    chomp $osRelease;
+    $osRelease = "Debian $osRelease";
   }
   $r = $? >> 8;
   $$o{'osinfoRelease'} = "$osRelease $$o{'osinfoRelease'}";
