@@ -397,7 +397,7 @@ sub mailqMIB {
   foreach (`mailq`) {
     chomp;
     last if ( /Mail queue is empty/ );
-    $c++ if ( /^[\d[A-F]{11}/ );
+    $c++ if ( /^[\d[A-F]{10}/ );
   }
   $r = $? >> 8;
   $$o{'mailqCount'} = $c unless $r;
