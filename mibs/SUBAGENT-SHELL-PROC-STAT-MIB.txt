@@ -73,7 +73,7 @@ SUBAGENT-SHELL-PROC-STAT MODULE-IDENTITY
   procInfoEntry ::=
     SEQUENCE {
         procVirtualMemory KBytes,
-        procOpenFdCount   GAUGE 
+        procOpenFdCount   Gauge32 
     }
 
   procVirtualMemory OBJECT-TYPE
@@ -84,7 +84,7 @@ SUBAGENT-SHELL-PROC-STAT MODULE-IDENTITY
     ::= { procInfoEntry 1 }
 
   procOpenFdCount OBJECT-TYPE
-    SYNTAX      GAUGE
+    SYNTAX      Gauge32
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "Number of open file descriptors"
