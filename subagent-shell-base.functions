@@ -173,6 +173,10 @@ sub procCountMIB {
     $$o{'procStopped'}++  if $stat =~ /^T/;
     $$o{'procZombie'}++   if $stat =~ /^Z/;
     $$o{'procUninterruptible'}++  if $stat =~ /^D/;
+    if ( opendir ( my $dh, "/proc/$pid/fd" ) ) {
+      $$o{"procOpenFdCount.$pid"} = $#{[readdir $dh]} - 1;
+      closedir $dh;
+    } 
   }
   my $r = $? >> 8;
   $$o{'procFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
