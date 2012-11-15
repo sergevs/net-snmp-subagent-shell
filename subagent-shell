@@ -20,6 +20,9 @@ use Getopt::Long;
 use XML::Simple;
 use Data::Dumper;
 
+#disable warning read_config_store open
+$ENV{SNMP_PERSISTENT_FILE}="/tmp/subagent-shell.$$";
+
 our ($config, @functions_config, $reg_oid);
 my  ($shm_id, $sem_id);
 my  $running=1;
@@ -275,7 +278,7 @@ sub daemonize {
     open STDOUT, ">/dev/null" or die "Can't dup STDOUT: $!";
 #    open(STDERR,"|/bin/logger -t \"subagent-shell\"[$$]") or die "Error: Unable to redirect STDERR to logger!";
     if ( defined($opt->{log_file})) {
-      open(STDERR, ">&LOGFILE") or die "Error: Unable to redirect STDERR to logger!";
+      open(STDERR, ">&LOGFILE") or die "Error: Unable to redirect STDERR to log file!";
     } else {
       open STDERR, ">/dev/null" or die "Can't dup STDOUT: $!";
     }
@@ -442,6 +445,7 @@ sub daemonize {
         semctl($sem_id, 0, IPC_RMID, 0);
         closelog;
         close LOGFILE if defined($opt->{log_file});
+        unlink $ENV{SNMP_PERSISTENT_FILE} if -f $ENV{SNMP_PERSISTENT_FILE};
         exit 0; 
       }
     }

@@ -66,13 +66,14 @@ SUBAGENT-SHELL-PROC-STAT MODULE-IDENTITY
     SYNTAX      procInfoEntry
     MAX-ACCESS  not-accessible
     STATUS      current
-    DESCRIPTION  "An entry containing management information applicable to apache server status"
+    DESCRIPTION  "An entry containing information applicable to a process"
     INDEX      { procIndex }
     ::= { procInfoTable 1 }
 
   procInfoEntry ::=
     SEQUENCE {
-        procVirtualMemory KBytes
+        procVirtualMemory KBytes,
+        procOpenFdCount   GAUGE 
     }
 
   procVirtualMemory OBJECT-TYPE
@@ -81,6 +82,13 @@ SUBAGENT-SHELL-PROC-STAT MODULE-IDENTITY
     STATUS      current
     DESCRIPTION "Virtual memory of processes"
     ::= { procInfoEntry 1 }
+
+  procOpenFdCount OBJECT-TYPE
+    SYNTAX      GAUGE
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of open file descriptors"
+    ::= { procInfoEntry 2 }
 
   procFuncExecTime OBJECT-TYPE
     SYNTAX      OCTET STRING

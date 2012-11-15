@@ -173,6 +173,10 @@ sub procCountMIB {
     $$o{'procStopped'}++  if $stat =~ /^T/;
     $$o{'procZombie'}++   if $stat =~ /^Z/;
     $$o{'procUninterruptible'}++  if $stat =~ /^D/;
+    if ( opendir ( my $dh, "/proc/$pid/fd" ) ) {
+      $$o{"procOpenFdCount.$pid"} = $#{[readdir $dh]} - 1;
+      closedir $dh;
+    } 
   }
   my $r = $? >> 8;
   $$o{'procFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
@@ -256,6 +260,13 @@ sub osInfoMIB {
   if ( -f '/etc/redhat-release' ) {
     $osRelease = `head -1 /etc/redhat-release`;
     chomp $osRelease;
+  } elsif ( -f '/etc/fedora-release' ) {
+    $osRelease = `head -1 /etc/fedora-release`;
+    chomp $osRelease;
+  } elsif ( -f '/etc/debian_version' ) {
+    $osRelease = `head -1 /etc/debian-version`;
+    chomp $osRelease;
+    $osRelease = "Debian $osRelease";
   }
   $r = $? >> 8;
   $$o{'osinfoRelease'} = "$osRelease $$o{'osinfoRelease'}";
@@ -390,7 +401,7 @@ sub mailqMIB {
   foreach (`mailq`) {
     chomp;
     last if ( /Mail queue is empty/ );
-    $c++ if ( /^[\d[A-F]{11}/ );
+    $c++ if ( /^[\d[A-F]{10}/ );
   }
   $r = $? >> 8;
   $$o{'mailqCount'} = $c unless $r;
