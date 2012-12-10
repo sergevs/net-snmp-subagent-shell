@@ -1,0 +1,55 @@
+SUBAGENT-SHELL-VMSTAT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises FROM SNMPv2-SMI
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-VMSTAT MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL vmstat statistics MIB"
+  ::= { functionsEntry 12 }
+
+  vmstatPswpin OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Pages swapped in."
+    ::= { SUBAGENT-SHELL-VMSTAT 1 }
+
+  vmstatPswpout OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Pages swapped out."
+    ::= { SUBAGENT-SHELL-VMSTAT 2 }
+
+  vmstatInterrupts OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Interrupts."
+    ::= { SUBAGENT-SHELL-VMSTAT 3 }
+
+  vmstatCntxSwitches OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "CPU context switches."
+    ::= { SUBAGENT-SHELL-VMSTAT 4 }
+
+  vmstatFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-VMSTAT 10 }
+
+  vmstatExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-VMSTAT 11 }
+END

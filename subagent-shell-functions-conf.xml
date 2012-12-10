@@ -6,6 +6,7 @@
 <function id="procCountMIB"/>
 <function id="osInfoMIB"/>
 <function id="lastLoginsMIB"/>
+<function id="vmstatMIB"/>
 <!--
 <function id="ip_conntrackMIB"/>
 <function id="httpResponseMIB">
