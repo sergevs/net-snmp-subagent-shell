@@ -7,8 +7,8 @@
 <function id="osInfoMIB"/>
 <function id="lastLoginsMIB"/>
 <function id="vmstatMIB"/>
-<!--
 <function id="ip_conntrackMIB"/>
+<!--
 <function id="httpResponseMIB">
   <args curl="m.google.com" match="session=(\d+)" description="google"/>
   <args curl="mail.google.com" description="mail"/>
