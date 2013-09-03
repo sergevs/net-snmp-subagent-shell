@@ -9,7 +9,7 @@ SUBAGENT-SHELL-EXEC-COMMAND MODULE-IDENTITY
   LAST-UPDATED "200906251500Z"
   ORGANIZATION "Noname, Inc."
   CONTACT-INFO "abrikus@gmail.com"
-  DESCRIPTION "SNMP SUBAGENT SHELL Apache status MIB"
+  DESCRIPTION "SNMP SUBAGENT SHELL command execution MIB"
   ::= { functionsEntry 9 }
 
   execCommandTable OBJECT-TYPE
@@ -23,7 +23,7 @@ SUBAGENT-SHELL-EXEC-COMMAND MODULE-IDENTITY
     SYNTAX      execCommandEntry
     MAX-ACCESS  not-accessible
     STATUS      current 
-    DESCRIPTION  "An entry containing management information applicable to apache server status" 
+    DESCRIPTION  "An entry containing management information applicable to commands status" 
     INDEX      { httpRespIndex }
     ::= { execCommandTable 1 } 
  
