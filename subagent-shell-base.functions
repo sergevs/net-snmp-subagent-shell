@@ -448,7 +448,7 @@ sub pingStatMIB {
     my $options = defined($a->{'options'})?$a->{'options'}:'';
     foreach (`ping $options -c $count $a->{'host'}`) {
       chomp;
-      if ( /^(\d+).+transmitted.+(\d+).+received.+([\d\.]+).+loss/ ) {
+      if ( /^(\d+).+transmitted.+ (\d+).+received.+ ([\d\.]+).+loss/ ) {
 	      $$o{"pingTransmitted.$i"} = $1;
 	      $$o{"pingReceived.$i"} = $2;
 	      $$o{"pingLoss.$i"} = $3;
