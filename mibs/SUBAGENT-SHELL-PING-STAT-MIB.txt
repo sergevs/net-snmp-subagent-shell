@@ -1,0 +1,128 @@
+SUBAGENT-SHELL-PING-STAT-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Counter64, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-PING-STAT MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL Apache status MIB"
+  ::= { functionsEntry 13 }
+
+  pingTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF pingEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of apache status ."
+    ::= { SUBAGENT-SHELL-PING-STAT 1 }
+
+  pingEntry OBJECT-TYPE 
+    SYNTAX      pingEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current 
+    DESCRIPTION  "An entry containing management information applicable to apache server status" 
+    INDEX      { httpRespIndex }
+    ::= { pingTable 1 } 
+ 
+  pingEntry ::= 
+    SEQUENCE { 
+        pingIndex                      Integer32, 
+        pingHost                       OCTET STRING,
+	      pingTransmitted			           Integer32,
+	      pingReceived  			           Integer32,	
+	      pingLoss      			           Integer32,
+	      pingRttMin     			           OCTET STRING,	
+	      pingRttAvg     			           OCTET STRING,
+	      pingRttMax     			           OCTET STRING,
+        pingExecTime                   OCTET STRING,              
+        pingExecStatus                 Integer32
+    } 
+
+  pingIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each command."
+    ::= { pingEntry 1 }
+
+  pingHost OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "ping host."
+    ::= { pingEntry 2 }
+
+  pingTransmitted OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of transmitted packets."
+    ::= { pingEntry 3 }
+
+  pingReceived OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Number of received packets."
+    ::= { pingEntry 4 }
+
+  pingLoss OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Percent of loss packets."
+    ::= { pingEntry 5 }
+
+  pingRttMin OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "RTT min time."
+    ::= { pingEntry 6 }
+
+  pingRttAvg OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "RTT average time."
+    ::= { pingEntry 7 }
+
+  pingRttMax OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "RTT max time."
+    ::= { pingEntry 8 }
+
+  pingExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "ping execution time."
+    ::= { pingEntry 9 } 
+
+  pingExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Ping exec code."
+    ::= { pingEntry 10 }
+
+  pingFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-PING-STAT 2 }
+
+  pingFuncExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-PING-STAT 3 }
+
+END

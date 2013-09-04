@@ -435,4 +435,41 @@ sub vmstatMIB {
   return $r;
 }
 
+sub pingStatMIB {
+  my $o=shift;
+  my $cfg=shift;
+  my $i=1; 
+  my $r=0;
+  my $t=gettimeofday();
+ 
+  foreach my $a (@{$cfg->{'args'}}) {
+    my $ts=gettimeofday();
+    my $count = defined($a->{'count'})?$a->{'count'}:10;
+    my $options = defined($a->{'options'})?$a->{'options'}:'';
+    foreach (`ping $options -c $count $a->{'host'}`) {
+      chomp;
+      if ( /^(\d+).+transmitted.+ (\d+).+received.+ ([\d\.]+).+loss/ ) {
+	      $$o{"pingTransmitted.$i"} = $1;
+	      $$o{"pingReceived.$i"} = $2;
+	      $$o{"pingLoss.$i"} = $3;
+      } elsif ( /^(rtt|round-trip).+= ([\d\.]+)\/([\d\.]+)\/([\d\.]+)/ ) {
+        $$o{"pingRttMin.$i"} = $2;
+        $$o{"pingRttAvg.$i"} = $3;
+        $$o{"pingRttMax.$i"} = $4;
+      }
+    }
+
+    my $cmd_r = $? >> 8;
+    $$o{"pingIndex.$i"} = $i;
+    $$o{"pingHost.$i"} = $a->{'host'};
+    $$o{"pingExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{"pingExecStatus.$i"} = $cmd_r;
+    $r = $cmd_r if $cmd_r;
+    $i++;
+  }
+  $$o{'pingFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'pingFuncExecStatus'} = $r;
+  return $r;
+}
+
 return 1;
