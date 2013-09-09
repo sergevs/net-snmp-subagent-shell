@@ -15,25 +15,36 @@ Installation:
 
 2. copy all files to the directory
 
-3. add line to snmpd.conf:
-perl do "/etc/snmp/subagent/snmpd-poller-agent";
 
-4. optional. read and amend snmpd-poller.conf  
-   you may need to amend time server name ( see line 40 )
+3. run subagent-shell:
+way 1:
+add th line to snmpd.conf:
+perl do "/etc/snmp/subagent/subagent-shell";
+
+way 2(recommended):
+copy subagent-shell.init to /etc/init.d/subagent-shell (Sys V scripts directory)
+copy subagent-shell to /usr/bin
+
+start subagent-shell:
+/etc/init.d/subagent-shell start
+
+4. optional. read and amend subagent-shell-functions-conf.xml  
 
 5. restart snmpd server
 
 Verification:
 
-snmpwalk -v1 -c public localhost -On .1.3.6.1.4.1.777.107
-.1.3.6.1.4.1.777.107.1.1.1 = STRING: "-0.000784"
-.1.3.6.1.4.1.777.107.1.2.1 = STRING: "/usr/sbin/ntpdate -t 10 -q4 ntp|"
-.1.3.6.1.4.1.777.107.1.2.2 = STRING: "0.341"
-.1.3.6.1.4.1.777.107.1.2.3 = STRING: "0"
-.1.3.6.1.4.1.777.107.1000.1.1 = STRING: "1308844535.0951"
-.1.3.6.1.4.1.777.107.1000.2.1 = STRING: "PStat"
-.1.3.6.1.4.1.777.107.1000.2.2 = STRING: "0.360"
-.1.3.6.1.4.1.777.107.1000.2.3 = STRING: "0"
+snmpwalk  -v2c  -M+/etc/snmp/subagent/mibs -mALL -c public localhost SUBAGENT-SHELL   | head -9
+SUBAGENT-SHELL-MIB::ssFunctionsCount = INTEGER: 6
+SUBAGENT-SHELL-MIB::ssFunctionsSuccessCount = INTEGER: 6
+SUBAGENT-SHELL-MIB::ssFunctionsFailedCount = INTEGER: 0
+SUBAGENT-SHELL-MIB::ssTimeStamp = STRING: "09-Sep-2013 17:38:59 (1378733939)"
+SUBAGENT-SHELL-MIB::ssTotalExecTime = STRING: "0.365"
+SUBAGENT-SHELL-NTP-SYNCSTATUS-MIB::ntpSyncStatus = STRING: "-0.001"
+SUBAGENT-SHELL-NTP-SYNCSTATUS-MIB::ntpSyncServer = STRING: "ntp"
+SUBAGENT-SHELL-NTP-SYNCSTATUS-MIB::ntpSyncFuncExecTime = STRING: "0.321"
+SUBAGENT-SHELL-NTP-SYNCSTATUS-MIB::ntpSyncExecStatus = INTEGER: 0
+
 
 Troubleshuting:
 Check system log for errors
