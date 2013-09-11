@@ -421,7 +421,9 @@ sub daemonize {
       };
 
       logMessage(LOG_ERR, "data size " . length($shm_message) ." is greater than configured shm_size " . $config->{'shm_size'} ) if length($shm_message) >= $config->{'shm_size'};
-  #    while (my ($k,$v) = each %otree) { logMessage(LOG_DEBUG, "otree: $k => $v" );}
+      if ( $opt->{verbose} >=1 ) {
+        foreach my $k (sort keys %otree) { logMessage(LOG_DEBUG, "MIB from otree: $k => $otree{$k}" );}
+      }
       if ( $opt->{verbose} >1 ) {
         my %oData;
         my $dataTimeStamp;
@@ -429,7 +431,7 @@ sub daemonize {
         unpackMessage( $shm_message, \%oData, \@sortedoids, \$dataTimeStamp );
         foreach my $o (@sortedoids) {
           my ( $t, $v ) = unpackOData($oData{$o});
-          logMessage(LOG_DEBUG, "otree: $o = $t , $v" );
+          logMessage(LOG_DEBUG, "OIDS from unpackOData: $o = $t , $v" );
         }
       }
       semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
