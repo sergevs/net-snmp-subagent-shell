@@ -162,7 +162,7 @@ sub procCountMIB {
   $$o{'procZombie'} =   0;
   $$o{'procUninterruptible'} =   0;
 
-  foreach(`ps axho pid,vsize,stat`) {
+  foreach(`ps axo pid,vsize,stat | sed -n '2,\$p'`) {
     chomp;
     my ($pid, $vsize, $stat) = split;
     $$o{"procVirtualMemory.$pid"} = $vsize;
