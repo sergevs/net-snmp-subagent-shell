@@ -295,8 +295,8 @@ sub lastLoginsMIB {
   $r = $? >> 8;
 
   $i=1;  
-
-  foreach  (`last -20`) {
+  my $cmd = ($^O =~ 'linux')?'last -20 -w':'last -20';
+  foreach  (`$cmd`) {
     chomp;
     next if ( /^$/ );
     if ( /^wtmp begins/ ) {
@@ -442,37 +442,46 @@ sub vmstatMIB {
 }
 
 sub pingStatMIB {
-  my $o=shift;
-  my $cfg=shift;
-  my $i=1; 
-  my $r=0;
-  my $t=gettimeofday();
- 
-  foreach my $a (@{$cfg->{'args'}}) {
-    my $ts=gettimeofday();
+  my $o = shift;
+  my $cfg = shift;
+  my $r = 0;
+  my $t = gettimeofday();
+  my @tdata;
+  my $i=0;
+
+  foreach my $a ( @{$cfg->{'args'}} ) {
+    my $ts = gettimeofday();
     my $count = defined($a->{'count'})?$a->{'count'}:10;
     my $options = defined($a->{'options'})?$a->{'options'}:'';
-    foreach (`ping $options -c $count $a->{'host'}`) {
+    $tdata[$i]->{'pid'} = open( $tdata[$i]->{'fh'} , "ping $options -q -c $count $a->{'host'} |" );
+    $tdata[$i]->{'host'} = $a->{'host'};
+    $i++;
+  }
+  for( $i=1; $i<=($#tdata+1); $i++ ) {
+    while ( readline ( $tdata[$i-1]->{'fh'} ) ) {
       chomp;
-      if ( /^(\d+).+transmitted.+ (\d+).+received.+ ([\d\.]+).+loss/ ) {
+      if ( /^(\d+).+transmitted.+ (\d+).+received.+ ([\d\.]+).+loss.+ time (\d+)/ ) {
 	      $$o{"pingTransmitted.$i"} = $1;
 	      $$o{"pingReceived.$i"} = $2;
 	      $$o{"pingLoss.$i"} = $3;
+	      $$o{"pingExecTime.$i"} = $4;
       } elsif ( /^(rtt|round-trip).+= ([\d\.]+)\/([\d\.]+)\/([\d\.]+)/ ) {
         $$o{"pingRttMin.$i"} = $2;
         $$o{"pingRttAvg.$i"} = $3;
         $$o{"pingRttMax.$i"} = $4;
       }
-    }
-
-    my $cmd_r = $? >> 8;
+    } 
     $$o{"pingIndex.$i"} = $i;
-    $$o{"pingHost.$i"} = $a->{'host'};
-    $$o{"pingExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{"pingHost.$i"} = $tdata[$i-1]->{'host'};
+  }
+
+  for( $i=1; $i<=($#tdata+1); $i++ ) {
+    waitpid( $tdata[$i-1]->{'pid'}, 0 );
+    my $cmd_r = $? >> 8;
     $$o{"pingExecStatus.$i"} = $cmd_r;
     $r = $cmd_r if $cmd_r;
-    $i++;
   }
+
   $$o{'pingFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'pingFuncExecStatus'} = $r;
   return $r;

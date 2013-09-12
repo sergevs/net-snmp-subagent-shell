@@ -24,7 +24,7 @@ SUBAGENT-SHELL-EXEC-COMMAND MODULE-IDENTITY
     MAX-ACCESS  not-accessible
     STATUS      current 
     DESCRIPTION  "An entry containing management information applicable to commands status" 
-    INDEX      { httpRespIndex }
+    INDEX      { cmdIndex }
     ::= { execCommandTable 1 } 
  
   execCommandEntry ::= 
@@ -91,7 +91,7 @@ SUBAGENT-SHELL-EXEC-COMMAND MODULE-IDENTITY
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "an optional string for a monitoring system."
-    ::= { httpResponseEntry 7 }
+    ::= { execCommandEntry 7 }
 
   cmdFuncExecTime OBJECT-TYPE
     SYNTAX      OCTET STRING
