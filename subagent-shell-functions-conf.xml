@@ -14,7 +14,7 @@
   <args host="8.8.8.8" count="5" options="-A"/>
 </function>
 <function id="httpResponseMIB">
-  <args curl="m.google.com" match="session=(\d+)" description="google"/>
+  <args curl="m.google.com" match="session=(\d+)" description="google" monitoringTemplate="SubagentShellWebService"/>
   <args curl="mail.google.com" description="mail"/>
 </function>
 <function id="apacheStatusMIB">
@@ -22,7 +22,7 @@
   <args status_url="localhost/server-status?auto"/>
 </function>
 <function id="execCommandMIB">
-  <args cmd="ls -alh" match="total (.*)$" description="total"/>
+  <args cmd="ls -alh" match="total (.*)$" description="total" monitoringTemplate="SubagentShellCommandStatus"/>
   <args cmd="find" match="afile" description="looking for afile in subtree"/>
 </function>
 <function id="dnsLookUpMIB">

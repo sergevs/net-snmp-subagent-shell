@@ -35,7 +35,8 @@ SUBAGENT-SHELL-HTTP-RESPONSE MODULE-IDENTITY
         httpRespCmdExecTime             OCTET STRING,              
         httpRespCmdExecStatus           Integer32,
         httpRespUrl                     OCTET STRING,              
-        httpRespMatchString             OCTET STRING
+        httpRespMatchString             OCTET STRING,
+        httpRespMonitoringTemplate      OCTET STRING
     } 
 
   httpRespIndex OBJECT-TYPE
@@ -92,6 +93,13 @@ SUBAGENT-SHELL-HTTP-RESPONSE MODULE-IDENTITY
     STATUS      current
     DESCRIPTION "matched pattern string."
     ::= { httpResponseEntry 7 }
+
+  httpRespMonitoringTemplate OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "an optional string for a monitoring system."
+    ::= { httpResponseEntry 8 }
 
   httpRespFuncExecTime OBJECT-TYPE
     SYNTAX      OCTET STRING

@@ -34,7 +34,8 @@ SUBAGENT-SHELL-EXEC-COMMAND MODULE-IDENTITY
         cmdExecTime                   OCTET STRING,              
         cmdExecStatus                 Integer32,
         cmdName                       OCTET STRING,
-        cmdOutMatchString             OCTET STRING
+        cmdOutMatchString             OCTET STRING,
+        cmdMonitoringTemplate         OCTET STRING
     } 
 
   cmdIndex OBJECT-TYPE
@@ -84,6 +85,13 @@ SUBAGENT-SHELL-EXEC-COMMAND MODULE-IDENTITY
     STATUS      current
     DESCRIPTION "matched pattern string."
     ::= { execCommandEntry 6 }
+
+  cmdMonitoringTemplate OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "an optional string for a monitoring system."
+    ::= { httpResponseEntry 7 }
 
   cmdFuncExecTime OBJECT-TYPE
     SYNTAX      OCTET STRING

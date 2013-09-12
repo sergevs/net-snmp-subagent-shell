@@ -1,5 +1,6 @@
 use strict;
 use warnings;
+use Sys::Syslog qw(:standard :macros);
 our $config;
 
 # old style function
@@ -125,6 +126,7 @@ sub httpResponseMIB {
     $$o{"httpRespCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"httpRespCmdExecStatus.$i"} = $cmd_r;
     $$o{"httpRespCurlArgs.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'curl'}]";
+    $$o{"httpRespMonditoringTemplate.$i"} = defined($a->{'monitoringTemplate'})?$a->{'monitoringTemplate'}:'';
     $r = $cmd_r if $cmd_r;
     $i++;
   }
@@ -153,8 +155,9 @@ sub ntpSyncMIB {
 }
 
 sub procCountMIB {
-  my $o=shift;
-  my $t=gettimeofday();
+  my $o = shift;
+  my $cfg = shift;
+  my $t = gettimeofday();
   $$o{'procTotal'} =    0;
   $$o{'procRunning'} =  0;
   $$o{'procSleeping'} = 0;
@@ -165,7 +168,13 @@ sub procCountMIB {
   foreach(`ps axo pid,vsize,stat | sed -n '2,\$p'`) {
     chomp;
     my ($pid, $vsize, $stat) = split;
-    $$o{"procVirtualMemory.$pid"} = $vsize;
+    if ( !defined($cfg->{'args'}[0]->{'extendedInfo'}) or $cfg->{'args'}[0]->{'extendedInfo'} eq 'on' ) {
+      $$o{"procVirtualMemory.$pid"} = $vsize;
+      if ( opendir ( my $dh, "/proc/$pid/fd" ) ) {
+        $$o{"procOpenFdCount.$pid"} = $#{[readdir $dh]} - 1;
+        closedir $dh;
+      } 
+    }
 
     $$o{'procTotal'}++;
     $$o{'procRunning'}++  if $stat =~ /^R/;
@@ -173,10 +182,6 @@ sub procCountMIB {
     $$o{'procStopped'}++  if $stat =~ /^T/;
     $$o{'procZombie'}++   if $stat =~ /^Z/;
     $$o{'procUninterruptible'}++  if $stat =~ /^D/;
-    if ( opendir ( my $dh, "/proc/$pid/fd" ) ) {
-      $$o{"procOpenFdCount.$pid"} = $#{[readdir $dh]} - 1;
-      closedir $dh;
-    } 
   }
   my $r = $? >> 8;
   $$o{'procFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
@@ -291,7 +296,7 @@ sub lastLoginsMIB {
 
   $i=1;  
 
-  foreach  (`last -w -n 20`) {
+  foreach  (`last -20`) {
     chomp;
     next if ( /^$/ );
     if ( /^wtmp begins/ ) {
@@ -332,6 +337,7 @@ sub execCommandMIB {
     $$o{"cmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"cmdExecStatus.$i"} = $cmd_r;
     $$o{"cmdName.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'cmd'}]";
+    $$o{"cmdMonditoringTemplate.$i"} = defined($a->{'monitoringTemplate'})?$a->{'monitoringTemplate'}:'';
     $r = $cmd_r if $cmd_r;
     $i++;
   }
