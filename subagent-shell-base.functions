@@ -126,7 +126,7 @@ sub httpResponseMIB {
     $$o{"httpRespCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"httpRespCmdExecStatus.$i"} = $cmd_r;
     $$o{"httpRespCurlArgs.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'curl'}]";
-    $$o{"httpRespMonditoringTemplate.$i"} = defined($a->{'monitoringTemplate'})?$a->{'monitoringTemplate'}:'';
+    $$o{"httpRespMonitoringTemplate.$i"} = defined($a->{'monitoringTemplate'})?$a->{'monitoringTemplate'}:'';
     $r = $cmd_r if $cmd_r;
     $i++;
   }
@@ -337,7 +337,7 @@ sub execCommandMIB {
     $$o{"cmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"cmdExecStatus.$i"} = $cmd_r;
     $$o{"cmdName.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'cmd'}]";
-    $$o{"cmdMonditoringTemplate.$i"} = defined($a->{'monitoringTemplate'})?$a->{'monitoringTemplate'}:'';
+    $$o{"cmdMonitoringTemplate.$i"} = defined($a->{'monitoringTemplate'})?$a->{'monitoringTemplate'}:'';
     $r = $cmd_r if $cmd_r;
     $i++;
   }
