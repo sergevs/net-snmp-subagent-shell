@@ -101,7 +101,7 @@ SUBAGENT-SHELL-PING-STAT MODULE-IDENTITY
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
-    DESCRIPTION "ping execution time."
+    DESCRIPTION "ping execution time in seconds."
     ::= { pingEntry 9 } 
 
   pingExecStatus OBJECT-TYPE

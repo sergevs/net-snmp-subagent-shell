@@ -464,7 +464,7 @@ sub pingStatMIB {
 	      $$o{"pingTransmitted.$i"} = $1;
 	      $$o{"pingReceived.$i"} = $2;
 	      $$o{"pingLoss.$i"} = $3;
-	      $$o{"pingExecTime.$i"} = $4;
+	      $$o{"pingExecTime.$i"} = $4/1000;
       } elsif ( /^(rtt|round-trip).+= ([\d\.]+)\/([\d\.]+)\/([\d\.]+)/ ) {
         $$o{"pingRttMin.$i"} = $2;
         $$o{"pingRttAvg.$i"} = $3;
