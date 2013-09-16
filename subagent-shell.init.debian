@@ -1,0 +1,57 @@
+#! /bin/sh -e
+### BEGIN INIT INFO
+# Provides:           subagent-shell
+# Required-Start:     $snmpd
+# Required-Stop:      $snmpd
+# Default-Start:      2 3 4 5
+# Default-Stop:       0 1 6
+# Short-Description:  SNMPD agent : subagent-shell
+# Description:        NET SNMP (Simple Network Management Protocol) Agent
+### END INIT INFO
+#
+# Author:    Serge <abrikus@gmail.com>
+#
+set -e
+
+. /lib/lsb/init-functions
+
+export PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+test -x /usr/bin/subagent-shell || exit 0
+
+# Defaults
+export MIBDIRS=/usr/share/mibs/site:/usr/share/snmp/mibs:/usr/share/mibs/iana:/usr/share/mibs/ietf:/usr/share/mibs/netsnmp
+OPTIONS='-d -p /var/run/subagent-shell.pid'
+
+# Reads config file (will override defaults above)
+[ -r /etc/default/subagent-shell ] && . /etc/default/subagent-shell
+
+case "$1" in
+  start)
+    log_daemon_msg "Starting snmpd agent" "subagent-shell "
+	  start-stop-daemon --quiet --start --oknodo --exec /usr/bin/subagent-shell -- $OPTIONS
+    log_end_msg $?
+    ;;
+  stop)
+    log_daemon_msg "Stopping snmpd agent" "subagent-shell"
+    start-stop-daemon --quiet --stop --oknodo --name subagent-shell --pidfile /var/run/subagent-shell.pid
+    log_end_msg $?
+    ;;
+  restart)
+    log_daemon_msg "Restarting snmpd agent" "subagent-shell"
+    $0 stop
+    sleep 2
+    $0 start
+    ;;
+  reload|force-reload)
+    echo "Reload is not supported. Use restart."
+    ;;
+  status)
+    status_of_proc -p /var/run/subagent-shell.pid /usr/bin/subagent-shell subagent-shell && exit 0 || exit=$?
+    ;;
+  *)
+    echo "Usage: /etc/init.d/subagent-shell {start|stop|restart|status}"
+    exit 1
+esac
+
+exit 0

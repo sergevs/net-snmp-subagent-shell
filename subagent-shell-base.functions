@@ -269,7 +269,7 @@ sub osInfoMIB {
     $osRelease = `head -1 /etc/fedora-release`;
     chomp $osRelease;
   } elsif ( -f '/etc/debian_version' ) {
-    $osRelease = `head -1 /etc/debian-version`;
+    $osRelease = `head -1 /etc/debian_version`;
     chomp $osRelease;
     $osRelease = "Debian $osRelease";
   }
