@@ -8,7 +8,8 @@ mibsdir = $(basedir)/mibs
 mibs_DATA = mibs/*
 
 install-data-hook:
-	if [ -f /etc/debian_version ]; then \
+	  $(mkdir_p) $(DESTDIR)$(basedir)/conf.d; \
+  if [ -f /etc/debian_version ]; then \
     $(mkdir_p) $(DESTDIR)$(initdir) $(DESTDIR)$(sysconfdir)/default; \
     $(INSTALL) subagent-shell.init.debian $(DESTDIR)$(initdir)/subagent-shell; \
     $(INSTALL) subagent-shell.options $(DESTDIR)$(sysconfdir)/default/subagent-shell; \
