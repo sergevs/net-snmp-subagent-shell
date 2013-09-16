@@ -10,11 +10,9 @@ in the order the included sample to work you also need /usr/sbin/ntpdate utility
 
 Installation:
 
-1. create a directory under snmp configuration. as an instance:
-   mkdir /etc/snmp/subagent
-
-2. copy all files to the directory
-
+Standard to GNU. 
+Use configure && make install with standard options.
+regenerate Makefile if required ( aclocal, automake, autoconf )
 
 3. run subagent-shell:
 way 1:
