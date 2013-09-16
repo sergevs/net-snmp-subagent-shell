@@ -1,12 +1,21 @@
 bin_SCRIPTS = subagent-shell
-basedir = /etc/snmp
+basedir = $(sysconfdir)/snmp
 base_DATA =  *.xml subagent-shell-base.functions
+
+initdir = $(sysconfdir)/init.d
 
 mibsdir = $(basedir)/mibs
 mibs_DATA = mibs/*
 
-initdir = /etc/init.d
-init_DATA = subagent-shell.init
-
 install-data-hook:
-	mv -v $(DESTDIR)$(initdir)/subagent-shell.init $(DESTDIR)$(initdir)/subagent-shell
+	if [ -f /etc/debian_version ]; then \
+    $(MKDIR_P) $(DESTDIR)$(initdir) $(DESTDIR)$(sysconfdir)/default; \
+    $(INSTALL) subagent-shell.init.debian $(DESTDIR)$(initdir)/subagent-shell; \
+    $(INSTALL) subagent-shell.options $(DESTDIR)$(sysconfdir)/default/subagent-shell; \
+  elif [ -f /etc/redhat-release ]; then \
+    $(MKDIR_P) $(DESTDIR)$(initdir) $(DESTDIR)$(sysconfdir)/sysconfig; \
+    $(INSTALL) subagent-shell.init.debian $(DESTDIR)$(initdir)/subagent-shell; \
+    $(INSTALL) subagent-shell.options $(DESTDIR)$(sysconfdir)/sysconfig; \
+  else \
+    echo "Release is not identified, please install init files by yourself"; \
+  fi
