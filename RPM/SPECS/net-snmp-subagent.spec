@@ -15,7 +15,7 @@ URL: http://code.google.com/p/linux-administrator-tools
 Net SNMP subagent executes arbitrary commands and provide results via snmpd  
 
 %prep
-%setup 
+%setup -n %name-%version/snmpd-agent
 
 %build
 
