@@ -21,6 +21,9 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 
 %install
 %__rm -rf %buildroot
+%__aclocal
+%__automake
+%__autoconf
 %configure
 %makeinstall
 
