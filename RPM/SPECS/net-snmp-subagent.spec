@@ -21,16 +21,8 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 
 %install
 %__rm -rf %buildroot
-cd snmpd-agent 
-%__mkdir_p %buildroot%_bindir
-%__mkdir_p %buildroot%_sysconfdir/init.d
-%__mkdir_p %buildroot%_sysconfdir/sysconfig
-%__mkdir_p %buildroot/etc/snmp/subagent/{conf.d,mibs}
-%__install subagent-shell %buildroot%_bindir
-%__install subagent-shell{-conf.xml,-base.functions,-functions-conf.xml} %buildroot/etc/snmp/subagent
-%__install mibs/* %buildroot/etc/snmp/subagent/mibs
-%__install subagent-shell.init %buildroot%_sysconfdir/init.d/subagent-shell
-%__install subagent-shell.options %buildroot%_sysconfdir/sysconfig
+%configure
+%makeinstall
 
 %files
 %defattr(-,root,root)
