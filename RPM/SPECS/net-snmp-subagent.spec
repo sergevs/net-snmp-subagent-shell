@@ -9,6 +9,7 @@ BuildRoot:  %{_tmppath}/%{name}-%version-buildroot
 BuildArch:  noarch
 Packager:   Serge <abrikus@gmail.com>
 Requires:   curl ntp
+BuildRequires: automake autoconf
 URL: http://code.google.com/p/linux-administrator-tools
 
 %description
@@ -24,6 +25,7 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 %__aclocal
 %__automake --add-missing
 %__autoconf
+
 %configure
 %makeinstall
 
