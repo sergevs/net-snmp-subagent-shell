@@ -1,0 +1,3 @@
+/etc/default/subagent-shell
+/etc/snmp/subagent/subagent-shell-functions-conf.xml
+/etc/snmp/subagent/subagent-shell-conf.xml

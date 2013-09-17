@@ -5,13 +5,12 @@
 # Required-Stop:      $snmpd
 # Default-Start:      2 3 4 5
 # Default-Stop:       0 1 6
-# Short-Description:  SNMPD agent : subagent-shell
+# Short-Description:  SNMP subaget shell agent
 # Description:        NET SNMP (Simple Network Management Protocol) Agent
 ### END INIT INFO
 #
 # Author:    Serge <abrikus@gmail.com>
 #
-set -e
 
 . /lib/lsb/init-functions
 
@@ -20,7 +19,6 @@ export PATH=/sbin:/usr/sbin:/bin:/usr/bin
 test -x /usr/bin/subagent-shell || exit 0
 
 # Defaults
-export MIBDIRS=/usr/share/mibs/site:/usr/share/snmp/mibs:/usr/share/mibs/iana:/usr/share/mibs/ietf:/usr/share/mibs/netsnmp
 OPTIONS='-d -p /var/run/subagent-shell.pid'
 
 # Reads config file (will override defaults above)

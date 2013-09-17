@@ -1,0 +1,1 @@
+# OPTIONS="-d -p /var/run/subagent-shell.pid"
