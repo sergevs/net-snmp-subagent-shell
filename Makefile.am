@@ -11,9 +11,7 @@ dist_bin_SCRIPTS = subagent-shell
 install-data-hook:
 	$(mkdir_p) $(DESTDIR)$(basedir)/conf.d; \
   if [ -f /etc/debian_version ]; then \
-    $(mkdir_p) $(DESTDIR)$(initdir) $(DESTDIR)$(sysconfdir)/default; \
-    $(INSTALL) subagent-shell.init.debian $(DESTDIR)$(initdir)/subagent-shell; \
-    $(INSTALL) subagent-shell.options $(DESTDIR)$(sysconfdir)/default/subagent-shell; \
+    echo "Init scripts and default file a part of debian package"; \
   elif [ -f /etc/redhat-release ]; then \
     $(mkdir_p) $(DESTDIR)$(initdir) $(DESTDIR)$(sysconfdir)/sysconfig; \
     $(INSTALL) subagent-shell.init.rhel $(DESTDIR)$(initdir)/subagent-shell; \
