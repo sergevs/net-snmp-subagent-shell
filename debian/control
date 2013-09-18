@@ -8,6 +8,6 @@ Homepage: https://code.google.com/p/linux-administrator-tools/wiki/NetSNMPSubage
 
 Package: subagent-shell
 Architecture: all
-Depends: ${perl:Depends}, ${misc:Depends}, libsnmp-perl, libxml-simple-perl  
+Depends: ${perl:Depends}, ${misc:Depends}, libsnmp-perl, libxml-simple-perl, snmp-mibs-downloader  
 Description: Subagent Shell is the net-snmp agent. 
  Subagent Shell is the complete implementation of agent written in perl. It's provides a simple interface to extend functionality and allows to define a function or execute arbitrary command and provide the results via SNMP.
