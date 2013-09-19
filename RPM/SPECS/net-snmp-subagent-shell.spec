@@ -17,7 +17,7 @@ URL: http://github.com/sergevs/net-snmp-subagent-shell
 Net SNMP subagent executes arbitrary commands and provide results via snmpd  
 
 %prep
-%setup -n %name-%version/%name
+%setup 
 
 %build
 
