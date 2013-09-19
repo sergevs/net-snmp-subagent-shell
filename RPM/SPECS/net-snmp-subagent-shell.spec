@@ -1,4 +1,4 @@
-Name:       net-snmp-subagent
+Name:       net-snmp-subagent-shell
 Version:    2.0.0.0
 Release:    ssv1
 Summary:    Net SNMP subagent extends snmd mib
@@ -16,7 +16,7 @@ URL: http://code.google.com/p/linux-administrator-tools
 Net SNMP subagent executes arbitrary commands and provide results via snmpd  
 
 %prep
-%setup -n %name-%version/snmpd-agent
+%setup -n %name-%version/%name
 
 %build
 
