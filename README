@@ -1,3 +1,3 @@
-this is a complete implementation of net-snmp perl subagent.
+A complete implementation of net-snmp subagent written on perl.
 
-it can be used to execute arbitrary commands and provide its results via snmp.
+Can be used to execute arbitrary commands and provide results via snmp.
