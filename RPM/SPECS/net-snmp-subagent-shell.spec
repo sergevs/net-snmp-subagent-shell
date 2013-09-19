@@ -10,7 +10,8 @@ BuildArch:  noarch
 Packager:   Serge <abrikus@gmail.com>
 Requires:   curl ntp
 BuildRequires: automake autoconf
-URL: http://code.google.com/p/linux-administrator-tools
+Obsoletes: net-snmp-subagent
+URL: http://github.com/sergevs/net-snmp-subagent-shell
 
 %description
 Net SNMP subagent executes arbitrary commands and provide results via snmpd  
@@ -32,12 +33,12 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 %files
 %defattr(-,root,root)
 %_bindir/*
-%dir /etc/snmp/subagent
-%dir /etc/snmp/subagent/mibs
-%dir /etc/snmp/subagent/conf.d
-/etc/snmp/subagent/mibs/*
-/etc/snmp/subagent/*.functions
-%config(noreplace) %attr(444,root,root) /etc/snmp/subagent/*-conf.xml
+%dir /etc/snmp/subagent-shell
+%dir /etc/snmp/subagent-shell/mibs
+%dir /etc/snmp/subagent-shell/conf.d
+/etc/snmp/subagent-shell/mibs/*
+/etc/snmp/subagent-shell/*.functions
+%config(noreplace) %attr(444,root,root) /etc/snmp/subagent-shell/*-conf.xml
 %_sysconfdir/init.d/subagent-shell
 %_sysconfdir/sysconfig/subagent-shell.options
 

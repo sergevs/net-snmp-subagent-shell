@@ -1,5 +1,5 @@
 bin_SCRIPTS = subagent-shell
-basedir = $(sysconfdir)/snmp/subagent
+basedir = $(sysconfdir)/snmp/subagent-shell
 base_DATA =  *.xml subagent-shell-base.functions
 initdir = $(sysconfdir)/init.d
 mibsdir = $(basedir)/mibs

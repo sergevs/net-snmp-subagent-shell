@@ -37,7 +37,7 @@ my  %agentMib = ( rootMIB => 'SUBAGENT-SHELL',
 my $opt = {
   daemon => 0,
   pid_file => '',
-  base_dir => '/etc/snmp/subagent/',
+  base_dir => '/etc/snmp/subagent-shell/',
   mib_dir => '',
   agentx_socket => '',
   log_file => '',
