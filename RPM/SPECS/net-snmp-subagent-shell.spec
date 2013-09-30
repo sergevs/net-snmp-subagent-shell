@@ -41,6 +41,7 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 %config(noreplace) %attr(444,root,root) /etc/snmp/subagent-shell/*-conf.xml
 %_sysconfdir/init.d/subagent-shell
 %_sysconfdir/sysconfig/subagent-shell.options
+%_mandir/man8/*
 
 %post
 # FIX startup/exit priority for versions before 2.1.0.1

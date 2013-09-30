@@ -1,10 +1,17 @@
 bin_SCRIPTS = subagent-shell
+
 basedir = $(sysconfdir)/snmp/subagent-shell
 base_DATA =  *.xml subagent-shell-base.functions
 initdir = $(sysconfdir)/init.d
+
 mibsdir = $(basedir)/mibs
 mibs_DATA = mibs/*
 dist_mibs_DATA = mibs/*
+
+man8ddir = $(mandir)/man8
+man8d_DATA = subagent-shell.8
+dist_man8d_DATA = subagent-shell.8
+
 dist_base_DATA = *.xml subagent-shell-base.functions
 dist_bin_SCRIPTS = subagent-shell
 
