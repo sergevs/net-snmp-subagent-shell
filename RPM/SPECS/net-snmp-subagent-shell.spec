@@ -10,6 +10,7 @@ BuildArch:  noarch
 Packager:   Serge <abrikus@gmail.com>
 Requires:   curl ntp
 BuildRequires: automake autoconf
+Provides: net-snmp-subagent
 Obsoletes: net-snmp-subagent
 URL: http://github.com/sergevs/net-snmp-subagent-shell
 
@@ -44,13 +45,8 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 %_mandir/man8/*
 
 %post
-# FIX startup/exit priority for versions before 2.1.0.1
-[ -s /etc/rc3.d/S22subagent-shell ] && /sbin/chkconfig --del subagent-shell 
 /sbin/chkconfig --add subagent-shell
-grep -P '^perl do.*/etc/snmp/subagent/snmpd-poller-agent' /etc/snmp/snmpd.conf
 if [ $? == 0 ]; then
-# removal embedded snmpd-poller for versions before 2.0.0.0
-  sed -i -e 's!^\(perl do "/etc/snmp/subagent/snmpd-poller-agent\)!#\1!' /etc/snmp/snmpd.conf
   /sbin/service snmpd condrestart >/dev/null 2>&1 || :
 fi
 if [ "$1" -ge "1" ]; then
