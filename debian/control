@@ -1,4 +1,4 @@
-Source: subagent-shell
+Source: net-snmp-subagent-shell
 Section: net
 Priority: extra
 Maintainer: Serge <abrikus@gmail.com>
@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 8.0.0), autotools-dev
 Standards-Version: 3.9.3
 Homepage: https://code.google.com/p/linux-administrator-tools/wiki/NetSNMPSubagentShell?tm=6
 
-Package: subagent-shell
+Package: net-snmp-subagent-shell
 Architecture: all
 Depends: ${perl:Depends}, ${misc:Depends}, libsnmp-perl, libxml-simple-perl, snmp-mibs-downloader  
 Description: Subagent Shell is the net-snmp agent. 
