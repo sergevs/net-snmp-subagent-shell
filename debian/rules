@@ -12,6 +12,12 @@
 %:
 	dh $@  --with autotools-dev
 
+override_dh_auto_clean:
+	aclocal; \
+	automake --add-missing; \
+	autoconf; \
+	dh_auto_clean;
+
 override_dh_installdeb:
 	dh_installdeb; \
   cp debian/conffiles debian/subagent-shell/DEBIAN/conffiles;
