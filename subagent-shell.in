@@ -75,6 +75,8 @@ undef $opt->{log_file} unless $opt->{log_file};
 
 sub help {
   print <<EOHELP;
+Version: @VERSION@
+
 Usage: subagent-shell [options]
 
 Options:

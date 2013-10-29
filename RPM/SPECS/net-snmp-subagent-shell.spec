@@ -33,7 +33,7 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 
 %files
 %defattr(-,root,root)
-%_bindir/*
+%attr(755,root,root) %_bindir/*
 %dir /etc/snmp/subagent-shell
 %dir /etc/snmp/subagent-shell/mibs
 %dir /etc/snmp/subagent-shell/conf.d
@@ -60,6 +60,24 @@ if [ $1 = 0 ] ; then
   /sbin/chkconfig --del subagent-shell
 fi
 exit 0
+
+# this section is required to smooth upgrade from net-snmp-subagent package
+%triggerpostun -- net-snmp-subagent
+if [ "$1" == "1" ]; then
+  if [ -d /etc/snmp/subagent ]; then
+    for f in `find /etc/snmp/subagent/ -maxdepth 1 -type f -name '*.rpmsave'`
+    do
+      mv $f /etc/snmp/subagent-shell/`basename $f`
+    done
+    pushd /etc/snmp/subagent >/dev/null 2>&1 
+    find -maxdepth 1 -type f -exec cp '{}' /etc/snmp/subagent-shell ';'
+    popd >/dev/null 2>&1
+    rm -rf /etc/snmp/subagent
+    echo 'Files from /etc/snmp/subagent moved to new /etc/snmp/subagent-shell directory ...'
+  fi
+  /sbin/chkconfig --add subagent-shell || :
+  /sbin/service subagent-shell start >/dev/null 2>&1 || :
+fi
 
 %changelog
 * Wed Nov 23 2011 Serge <abrikus@gmail.com> 1.1.0.0-ssv1
