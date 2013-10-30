@@ -420,22 +420,30 @@ sub vmstatMIB {
   my $o=shift;
   my $r=0;
   my $t=gettimeofday();
-  foreach (`vmstat -s`) {
-    chomp;
-    s/^\s+//;
-    my ($v,$c) = split / +/, $_, 2;
-    if ( $c eq 'pages swapped in' ) {
-      $$o{'vmstatPswpin'} = $v; 
-    } elsif ( $c eq 'pages swapped out' ) {
-      $$o{'vmstatPswpout'} = $v; 
-    } elsif ( $c eq 'interrupts' ) {
-      $$o{'vmstatInterrupts'} = $v; 
-    } elsif ( $c eq 'CPU context switches' ) {
-      $$o{'vmstatCntxSwitches'} = $v; 
-    }     
-  }
 
-  $r = $? >> 8;
+  my $c=`which vmstat`; chomp $c;
+  
+  if ( -x $c ) {
+    foreach (`vmstat -s`) {
+      chomp;
+      s/^\s+//;
+      my ($v,$c) = split / +/, $_, 2;
+      if ( $c eq 'pages swapped in' ) {
+        $$o{'vmstatPswpin'} = $v; 
+      } elsif ( $c eq 'pages swapped out' ) {
+        $$o{'vmstatPswpout'} = $v; 
+      } elsif ( $c eq 'interrupts' ) {
+        $$o{'vmstatInterrupts'} = $v; 
+      } elsif ( $c eq 'CPU context switches' ) {
+        $$o{'vmstatCntxSwitches'} = $v; 
+      }     
+    }
+
+    $r = $? >> 8;
+  } else {
+    logMessage(LOG_WARNING, "vmstat is not found");
+    $r = -1;
+  }
   $$o{'vmstatFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'vmstatExecStatus'} = $r;
   return $r;
