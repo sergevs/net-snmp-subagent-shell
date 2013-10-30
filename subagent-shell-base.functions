@@ -505,7 +505,8 @@ sub diskStatsMIB {
     # or look at https://www.kernel.org/doc/Documentation/iostats.txt
     # to read the same with more details
     my @block_devices_with_stats = split ;
-    unless ($block_devices_with_stats[2] =~ $match_re){
+    next unless $#block_devices_with_stats == 13;
+    unless ( $block_devices_with_stats[2] =~ $match_re){
         logMessage(LOG_DEBUG, "Block device $block_devices_with_stats[2] didnt match against $match_re");
         next;
     }
