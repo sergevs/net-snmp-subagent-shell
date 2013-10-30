@@ -487,4 +487,54 @@ sub pingStatMIB {
   return $r;
 }
 
+sub diskStatsMIB {
+  my $t = gettimeofday();
+  my $o=shift;
+  my $cfg=shift;
+  my $i=1;
+  my $r=0;
+
+  my $get_diskstats_command = $cfg->{'args'}[0]->{'command'} || 'cat /proc/diskstats';
+  my $match_re = $cfg->{'args'}[0]->{'match'} || '[hsv]d[a-z]+\\d*|c\\d+t\\d+d\\d+s\\d+$|cciss\/c\\d+d\\d+p\\d+|dm-\\d+';
+  
+  logMessage(LOG_DEBUG, "executing $get_diskstats_command");
+
+  foreach (`$get_diskstats_command 2>/dev/null`) {
+    # get contents of a file, split it and fill in the data
+    # pretty simple, read mib for description
+    # or look at https://www.kernel.org/doc/Documentation/iostats.txt
+    # to read the same with more details
+    my @block_devices_with_stats = split ;
+    unless ($block_devices_with_stats[2] =~ $match_re){
+        logMessage(LOG_DEBUG, "Block device $block_devices_with_stats[2] didnt match against $match_re");
+        next;
+    }
+    logMessage(LOG_DEBUG, "Block device $block_devices_with_stats[2] matched against $match_re");
+    $$o{"diskStatsIndex.$i"}               = $i;
+    $$o{"diskStatsName.$i"}                = $block_devices_with_stats[2];
+    $$o{"diskStatsReadsCompleted.$i"}      = $block_devices_with_stats[3];
+    $$o{"diskStatsReadsMerged.$i"}         = $block_devices_with_stats[4];
+    $$o{"diskStatsSectorsRead.$i"}         = $block_devices_with_stats[5];
+    $$o{"diskStatsMsSpentReading.$i"}      = $block_devices_with_stats[6];
+    $$o{"diskStatsWritesCompleted.$i"}     = $block_devices_with_stats[7];
+    $$o{"diskStatsWritesMerged.$i"}        = $block_devices_with_stats[8];
+    $$o{"diskStatsSectorsWritten.$i"}      = $block_devices_with_stats[9]; 
+    $$o{"diskStatsMsSpentWriting.$i"}      = $block_devices_with_stats[10];
+    $$o{"diskStatsIOInProgress.$i"}        = $block_devices_with_stats[11];
+    $$o{"diskStatsMsSpentInIO.$i"}         = $block_devices_with_stats[12];
+    $$o{"diskStatsWeightedMsSpentInIO.$i"} = $block_devices_with_stats[13];
+
+    $i++;
+  }
+
+  # prepare return value and fill in some statistics of execution
+  $r = $? >> 8;
+  $$o{'diskStatsCmdExecStatus'} = $r;
+  $$o{'diskStatsCmdExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t );
+
+  return $r;
+
+}
+
+
 return 1;
