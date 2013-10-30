@@ -5,6 +5,7 @@
         log_level="5"
         shm_size="131072"
         rootMIB="SUBAGENT-SHELL"
+        loadMibModules="defined"
         functionsCount="ssFunctionsCount"
         functionsSuccessCount="ssFunctionsSuccessCount"
         functionsFailedCount="ssFunctionsFailedCount"

@@ -15,7 +15,7 @@ use Socket;
 use POSIX qw(:sys_wait_h strftime locale_h);
 use Time::HiRes qw( gettimeofday );
 use Sys::Syslog qw(:standard :macros);
-use File::Basename qw( fileparse );
+use File::Basename qw( basename fileparse );
 use Getopt::Long;
 use XML::Simple;
 use Data::Dumper;
@@ -324,7 +324,29 @@ sub daemonize {
   }
   SNMP::initMib(); # parses default list of Mib modules from default dirs
   SNMP::addMibDirs("$mibDir");
-  SNMP::loadModules("ALL");
+
+  if ( defined( $config->{'loadMibModules'} ) ) {
+    if ( $config->{'loadMibModules'} =~ /all/i ) {
+      logMessage(LOG_DEBUG, "loading all mib modules ");
+      SNMP::loadModules("ALL");
+    } elsif ( $config->{'loadMibModules'} =~ /defined/i ) {
+      my @mibModules=("SNMPv2-SMI", "SNMPv2-TC", "$agentMib{rootMIB}-MIB");
+      foreach ( glob("$mibDir/*MIB.txt") ){
+        push @mibModules, (split /\./, basename($_) )[0];
+      }
+      logMessage(LOG_DEBUG, "loading mib modules: " . join ",", @mibModules);
+      SNMP::loadModules(@mibModules);
+    } else {
+      my @mibModules=("SNMPv2-SMI", "SNMPv2-TC", "$agentMib{rootMIB}-MIB");
+      push @mibModules, split /,/, $config->{'loadMibModules'};
+      logMessage(LOG_DEBUG, "loading mib modules: " . join ",", @mibModules);
+      SNMP::loadModules(@mibModules);
+    }
+  } else {
+    logMessage(LOG_DEBUG, "loading all mib modules ");
+    SNMP::loadModules("ALL");
+  }
+
   $reg_oid=$SNMP::MIB{$agentMib{rootMIB}}->{'objectID'};
 
   if ( $opt->{daemon} ) {
