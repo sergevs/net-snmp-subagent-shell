@@ -1,0 +1,165 @@
+SUBAGENT-SHELL-DISKSTATS-MIB DEFINITIONS ::= BEGIN
+
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Counter64, Gauge32, Integer32 FROM SNMPv2-SMI
+  functionsEntry FROM SUBAGENT-SHELL-MIB
+  TimeStamp FROM SNMPv2-TC;
+
+SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
+  LAST-UPDATED "201310281600Z"
+  ORGANIZATION "Example org"
+  CONTACT-INFO "iippolitov@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL DISK STATS MIB"
+  ::= { functionsEntry 14 }
+
+  diskStatsCmdExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-DISKSTATS 1 }
+
+  diskStatsCmdExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-DISKSTATS 2 }
+
+  diskStatsTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF diskStatsTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  ""
+    ::= { SUBAGENT-SHELL-DISKSTATS 3 }
+
+  diskStatsTableEntry OBJECT-TYPE 
+    SYNTAX      diskStatsTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current 
+    DESCRIPTION  "" 
+    INDEX      { diskStatsEntryIndex }
+    ::= { diskStatsTable 1 } 
+ 
+  diskStatsTableEntry ::= 
+    SEQUENCE { 
+        diskStatsIndex                 integer32,
+        diskStatsName                  OCTET STRING,
+        diskStatsReadsCompleted        integer32,
+        diskStatsReadsMerged           integer32,
+        diskStatsSectorsRead           integer32,
+        diskStatsMsSpentReading        integer32,
+        diskStatsWritesCompleted       integer32,
+        diskStatsWritesMerged          integer32,
+        diskStatsSectorsWritten        integer32,
+        diskStatsMsSpentWriting        integer32,
+        diskStatsIOInProgress          integer32,
+        diskStatsMsSpentInIO           integer32,
+        diskStatsWeightedMsSpentInIO   integer32,
+
+    } 
+
+    diskStatsIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each disk."
+    ::= { diskStatsTableEntry 1 }
+    
+    diskStatsName OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "block device name"
+    ::= { diskStatsTableEntry 2 }    
+
+    diskStatsReadsCompleted OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "This is the total number of reads completed successfully"
+    ::= { diskStatsTableEntry 3 }
+
+    diskStatsReadsMerged OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Reads and writes which are adjacent to each other may be merged for
+                efficiency.  Thus two 4K reads may become one 8K read before it is
+                ultimately handed to the disk, and so it will be counted (and queued)
+                as only one I/O.  This field lets you know how often this was done."
+    ::= { diskStatsTableEntry 4 }
+
+    diskStatsSectorsRead OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "This is the total number of sectors read successfully."
+    ::= { diskStatsTableEntry 5 }
+
+    diskStatsMsSpentReading OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "This is the total number of milliseconds spent by all reads (as
+                measured from __make_request() to end_that_request_last())."
+    ::= { diskStatsTableEntry 6 }
+
+    diskStatsWritesCompleted OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "This is the total number of writes completed successfully."
+    ::= { diskStatsTableEntry 7 }
+
+    diskStatsWritesMerged OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "As per diskStatsEntryReadsMerged"
+    ::= { diskStatsTableEntry 8 }
+
+    diskStatsSectorsWritten OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "This is the total number of sectors written successfully."
+    ::= { diskStatsTableEntry 9 }
+
+    diskStatsMsSpentWriting OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "This is the total number of milliseconds spent by all writes (as
+                measured from __make_request() to end_that_request_last())."
+    ::= { diskStatsTableEntry 10 }
+
+    diskStatsIOInProgress OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The only field that should go to zero. Incremented as requests are
+                given to appropriate struct request_queue and decremented as they finish."
+    ::= { diskStatsTableEntry 11 }
+
+    diskStatsMsSpentInIO OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "This field increases so long as field 9 is nonzero."
+    ::= { diskStatsTableEntry 12 }
+
+    diskStatsWeightedMsSpentInIO OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "This field is incremented at each I/O start, I/O completion, I/O
+                merge, or read of these stats by the number of I/Os in progress
+                (field 9) times the number of milliseconds spent doing I/O since the
+                last update of this field.  This can provide an easy measure of both
+                I/O completion time and the backlog that may be accumulating."
+    ::= { diskStatsTableEntry 13 }
+    
+
+END
