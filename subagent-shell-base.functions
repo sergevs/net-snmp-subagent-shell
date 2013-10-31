@@ -2,6 +2,7 @@ use strict;
 use warnings;
 use Sys::Syslog qw(:standard :macros);
 our $config;
+use Date::Parse;
 
 # old style function
 sub monitorNtp {
@@ -165,11 +166,12 @@ sub procCountMIB {
   $$o{'procZombie'} =   0;
   $$o{'procUninterruptible'} =   0;
 
-  foreach(`ps axo pid,vsize,stat | sed -n '2,\$p'`) {
+  foreach(`ps axo pid=,vsize=,stat=,lstart=|head`) {
     chomp;
-    my ($pid, $vsize, $stat) = split;
+    my ($not_used_but_needed,$pid, $vsize, $stat, $lstart) = split /\s+/,$_,5;
     if ( !defined($cfg->{'args'}[0]->{'extendedInfo'}) or $cfg->{'args'}[0]->{'extendedInfo'} eq 'on' ) {
       $$o{"procVirtualMemory.$pid"} = $vsize;
+      $$o{"procStartTime.$pid"} = str2time($lstart);
       if ( opendir ( my $dh, "/proc/$pid/fd" ) ) {
         $$o{"procOpenFdCount.$pid"} = $#{[readdir $dh]} - 1;
         closedir $dh;
