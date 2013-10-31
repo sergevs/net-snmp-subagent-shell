@@ -166,7 +166,7 @@ sub procCountMIB {
   $$o{'procZombie'} =   0;
   $$o{'procUninterruptible'} =   0;
 
-  foreach(`ps axo pid=,vsize=,stat=,lstart=|head`) {
+  foreach(`ps axo pid=,vsize=,stat=,lstart=`) {
     chomp;
     my ($not_used_but_needed,$pid, $vsize, $stat, $lstart) = split /\s+/,$_,5;
     if ( !defined($cfg->{'args'}[0]->{'extendedInfo'}) or $cfg->{'args'}[0]->{'extendedInfo'} eq 'on' ) {
