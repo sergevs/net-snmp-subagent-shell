@@ -2,7 +2,6 @@ SUBAGENT-SHELL-PROC-STAT-MIB DEFINITIONS ::= BEGIN
 
 IMPORTS
   MODULE-IDENTITY, enterprises, Gauge32 FROM SNMPv2-SMI
-  TimeStamp FROM SNMPv2-TC
   KBytes FROM HOST-RESOURCES-MIB
   functionsEntry FROM SUBAGENT-SHELL-MIB;
 
@@ -73,7 +72,8 @@ SUBAGENT-SHELL-PROC-STAT MODULE-IDENTITY
   procInfoEntry ::=
     SEQUENCE {
         procVirtualMemory KBytes,
-        procOpenFdCount   Gauge32 
+        procOpenFdCount   Gauge32, 
+        procStartTime     INTEGER,
     }
 
   procVirtualMemory OBJECT-TYPE
@@ -89,6 +89,13 @@ SUBAGENT-SHELL-PROC-STAT MODULE-IDENTITY
     STATUS      current
     DESCRIPTION "Number of open file descriptors"
     ::= { procInfoEntry 2 }
+
+  procStartTime OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A process start timestamp (unixtime)"
+    ::= { procInfoEntry 3 }
 
   procFuncExecTime OBJECT-TYPE
     SYNTAX      OCTET STRING
