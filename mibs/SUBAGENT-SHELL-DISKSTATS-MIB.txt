@@ -44,20 +44,19 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
  
   diskStatsTableEntry ::= 
     SEQUENCE { 
-        diskStatsIndex                 integer32,
+        diskStatsIndex                 Integer32,
         diskStatsName                  OCTET STRING,
-        diskStatsReadsCompleted        integer32,
-        diskStatsReadsMerged           integer32,
-        diskStatsSectorsRead           integer32,
-        diskStatsMsSpentReading        integer32,
-        diskStatsWritesCompleted       integer32,
-        diskStatsWritesMerged          integer32,
-        diskStatsSectorsWritten        integer32,
-        diskStatsMsSpentWriting        integer32,
-        diskStatsIOInProgress          integer32,
-        diskStatsMsSpentInIO           integer32,
-        diskStatsWeightedMsSpentInIO   integer32,
-
+        diskStatsReadsCompleted        Counter64,
+        diskStatsReadsMerged           Counter64,
+        diskStatsSectorsRead           Counter64,
+        diskStatsMsSpentReading        Counter64,
+        diskStatsWritesCompleted       Counter64,
+        diskStatsWritesMerged          Counter64,
+        diskStatsSectorsWritten        Counter64,
+        diskStatsMsSpentWriting        Counter64,
+        diskStatsIOInProgress          Counter64,
+        diskStatsMsSpentInIO           Counter64,
+        diskStatsWeightedMsSpentInIO   Counter64
     } 
 
     diskStatsIndex OBJECT-TYPE
@@ -75,14 +74,14 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
     ::= { diskStatsTableEntry 2 }    
 
     diskStatsReadsCompleted OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of reads completed successfully"
     ::= { diskStatsTableEntry 3 }
 
     diskStatsReadsMerged OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "Reads and writes which are adjacent to each other may be merged for
@@ -92,14 +91,14 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
     ::= { diskStatsTableEntry 4 }
 
     diskStatsSectorsRead OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of sectors read successfully."
     ::= { diskStatsTableEntry 5 }
 
     diskStatsMsSpentReading OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of milliseconds spent by all reads (as
@@ -107,28 +106,28 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
     ::= { diskStatsTableEntry 6 }
 
     diskStatsWritesCompleted OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of writes completed successfully."
     ::= { diskStatsTableEntry 7 }
 
     diskStatsWritesMerged OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "As per diskStatsEntryReadsMerged"
     ::= { diskStatsTableEntry 8 }
 
     diskStatsSectorsWritten OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of sectors written successfully."
     ::= { diskStatsTableEntry 9 }
 
     diskStatsMsSpentWriting OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of milliseconds spent by all writes (as
@@ -136,7 +135,7 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
     ::= { diskStatsTableEntry 10 }
 
     diskStatsIOInProgress OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "The only field that should go to zero. Incremented as requests are
@@ -144,14 +143,14 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
     ::= { diskStatsTableEntry 11 }
 
     diskStatsMsSpentInIO OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This field increases so long as field 9 is nonzero."
     ::= { diskStatsTableEntry 12 }
 
     diskStatsWeightedMsSpentInIO OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter64
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This field is incremented at each I/O start, I/O completion, I/O
