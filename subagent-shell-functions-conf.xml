@@ -9,6 +9,9 @@
 <function id="vmstatMIB"/>
 <function id="ip_conntrackMIB"/>
 <!--
+<function id="diskStatsMIB">
+  <args command="ssh localhost cat /proc/diskstats" match="sda\d+" />
+</function>
 <function id="pingStatMIB">
   <args host="www.google.com"/>
   <args host="8.8.8.8" count="5" options="-A"/>
