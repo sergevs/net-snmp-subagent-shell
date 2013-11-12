@@ -9,22 +9,22 @@ SUBAGENT-SHELL-PING-STAT MODULE-IDENTITY
   LAST-UPDATED "200906251500Z"
   ORGANIZATION "Noname, Inc."
   CONTACT-INFO "abrikus@gmail.com"
-  DESCRIPTION "SNMP SUBAGENT SHELL Apache status MIB"
+  DESCRIPTION "SNMP SUBAGENT SHELL Ping status MIB"
   ::= { functionsEntry 13 }
 
   pingTable OBJECT-TYPE
     SYNTAX      SEQUENCE OF pingEntry
     MAX-ACCESS  not-accessible
     STATUS      current
-    DESCRIPTION  "A list of apache status ."
+    DESCRIPTION  "A list of ping status ."
     ::= { SUBAGENT-SHELL-PING-STAT 1 }
 
   pingEntry OBJECT-TYPE 
     SYNTAX      pingEntry
     MAX-ACCESS  not-accessible
     STATUS      current 
-    DESCRIPTION  "An entry containing management information applicable to apache server status" 
-    INDEX      { httpRespIndex }
+    DESCRIPTION  "An entry containing management information applicable to ping status" 
+    INDEX      { pingIndex }
     ::= { pingTable 1 } 
  
   pingEntry ::= 
