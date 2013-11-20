@@ -56,7 +56,11 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
         diskStatsMsSpentWriting        Counter64,
         diskStatsIOInProgress          Counter64,
         diskStatsMsSpentInIO           Counter64,
-        diskStatsWeightedMsSpentInIO   Counter64
+        diskStatsWeightedMsSpentInIO   Counter64,
+        diskStatsUtilisation           Gauge32,
+        diskStatsAvgWait               Gauge32,
+
+        
     } 
 
     diskStatsIndex OBJECT-TYPE
@@ -159,6 +163,19 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
                 last update of this field.  This can provide an easy measure of both
                 I/O completion time and the backlog that may be accumulating."
     ::= { diskStatsTableEntry 13 }
-    
+
+    diskStatsUtilisation OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "%utilisation in the last 300 seconds, may be 0 if there was no data collection"
+    ::= { diskStatsTableEntry 15 }
+
+    diskStatsAvgWait OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "average wait of an IO request. May be 0 if there was no data collection"
+    ::= { diskStatsTableEntry 16 }
 
 END
