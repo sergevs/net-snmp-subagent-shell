@@ -8,8 +8,8 @@ IMPORTS
 
 SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
   LAST-UPDATED "201310281600Z"
-  ORGANIZATION "Example org"
-  CONTACT-INFO "iippolitov@gmail.com"
+  ORGANIZATION "Phorm Inc."
+  CONTACT-INFO "igor.ippolitov@phorm.com"
   DESCRIPTION "SNMP SUBAGENT SHELL DISK STATS MIB"
   ::= { functionsEntry 14 }
 
@@ -44,24 +44,26 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
  
   diskStatsTableEntry ::= 
     SEQUENCE { 
-        diskStatsIndex                 integer32,
-        diskStatsName                  OCTET STRING,
-        diskStatsReadsCompleted        integer32,
-        diskStatsReadsMerged           integer32,
-        diskStatsSectorsRead           integer32,
-        diskStatsMsSpentReading        integer32,
-        diskStatsWritesCompleted       integer32,
-        diskStatsWritesMerged          integer32,
-        diskStatsSectorsWritten        integer32,
-        diskStatsMsSpentWriting        integer32,
-        diskStatsIOInProgress          integer32,
-        diskStatsMsSpentInIO           integer32,
-        diskStatsWeightedMsSpentInIO   integer32,
-
+        diskStatsIndex                      integer32,
+        diskStatsName                       OCTET STRING,
+        diskStatsReadsCompleted             counter,
+        diskStatsReadsMerged                counter,
+        diskStatsSectorsRead                counter,
+        diskStatsMsSpentReading             counter,
+        diskStatsWritesCompleted            counter,
+        diskStatsWritesMerged               counter,
+        diskStatsSectorsWritten             counter,
+        diskStatsMsSpentWriting             counter,
+        diskStatsIOInProgress               counter,
+        diskStatsMsSpentInIO                counter,
+        diskStatsWeightedMsSpentInIO        counter,
+        diskStatsMeasurementTimestampMs     counter,
+        diskStatsUtilisation                gauge,
+        diskStatsAvgWait                    gauge,
     } 
 
     diskStatsIndex OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Integer
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "A unique value, greater than zero, for each disk."
@@ -75,14 +77,14 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
     ::= { diskStatsTableEntry 2 }    
 
     diskStatsReadsCompleted OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of reads completed successfully"
     ::= { diskStatsTableEntry 3 }
 
     diskStatsReadsMerged OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "Reads and writes which are adjacent to each other may be merged for
@@ -92,14 +94,14 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
     ::= { diskStatsTableEntry 4 }
 
     diskStatsSectorsRead OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of sectors read successfully."
     ::= { diskStatsTableEntry 5 }
 
     diskStatsMsSpentReading OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of milliseconds spent by all reads (as
@@ -107,28 +109,28 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
     ::= { diskStatsTableEntry 6 }
 
     diskStatsWritesCompleted OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of writes completed successfully."
     ::= { diskStatsTableEntry 7 }
 
     diskStatsWritesMerged OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "As per diskStatsEntryReadsMerged"
     ::= { diskStatsTableEntry 8 }
 
     diskStatsSectorsWritten OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of sectors written successfully."
     ::= { diskStatsTableEntry 9 }
 
     diskStatsMsSpentWriting OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This is the total number of milliseconds spent by all writes (as
@@ -136,7 +138,7 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
     ::= { diskStatsTableEntry 10 }
 
     diskStatsIOInProgress OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "The only field that should go to zero. Incremented as requests are
@@ -144,14 +146,14 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
     ::= { diskStatsTableEntry 11 }
 
     diskStatsMsSpentInIO OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This field increases so long as field 9 is nonzero."
     ::= { diskStatsTableEntry 12 }
 
     diskStatsWeightedMsSpentInIO OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Counter
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "This field is incremented at each I/O start, I/O completion, I/O
@@ -160,6 +162,26 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
                 last update of this field.  This can provide an easy measure of both
                 I/O completion time and the backlog that may be accumulating."
     ::= { diskStatsTableEntry 13 }
-    
 
+    diskStatsMeasurementTimestampMs OBJECT-TYPE
+    SYNTAX      Counter
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "This field is used to calculate data from other fields"    
+    ::= { diskStatsTableEntry 14 }
+    
+    diskStatsUtilisation OBJECT-TYPE
+    SYNTAX      Gauge
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "%utilisation in the last 300 seconds, may be 0 if there was no data collection"
+    ::= { diskStatsTableEntry 15 }
+    
+    diskStatsAvgWait OBJECT-TYPE
+    SYNTAX      Gauge
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "average wait of an IO request. May be 0 if there was no data collection"    
+    ::= { diskStatsTableEntry 16 }
+    
 END
