@@ -495,6 +495,8 @@ sub pingStatMIB {
   return $r;
 }
 
+my @diskStats;
+
 sub diskStatsMIB {
   my $t = gettimeofday();
   my $o=shift;
@@ -502,9 +504,11 @@ sub diskStatsMIB {
   my $i=1;
   my $r=0;
 
+  use Time::HiRes qw(time);
+
   my $get_diskstats_command = $cfg->{'args'}[0]->{'command'} || 'cat /proc/diskstats';
   my $match_re = $cfg->{'args'}[0]->{'match'} || '[hsv]d[a-z]+\\d*|c\\d+t\\d+d\\d+s\\d+$|cciss\/c\\d+d\\d+p\\d+|dm-\\d+';
-  
+
   logMessage(LOG_DEBUG, "executing $get_diskstats_command");
 
   foreach (`$get_diskstats_command 2>/dev/null`) {
@@ -518,20 +522,43 @@ sub diskStatsMIB {
         next;
     }
     logMessage(LOG_DEBUG, "Block device $block_devices_with_stats[2] matched against $match_re");
-    $$o{"diskStatsIndex.$i"}               = $i;
-    $$o{"diskStatsName.$i"}                = $block_devices_with_stats[2];
-    $$o{"diskStatsReadsCompleted.$i"}      = $block_devices_with_stats[3];
-    $$o{"diskStatsReadsMerged.$i"}         = $block_devices_with_stats[4];
-    $$o{"diskStatsSectorsRead.$i"}         = $block_devices_with_stats[5];
-    $$o{"diskStatsMsSpentReading.$i"}      = $block_devices_with_stats[6];
-    $$o{"diskStatsWritesCompleted.$i"}     = $block_devices_with_stats[7];
-    $$o{"diskStatsWritesMerged.$i"}        = $block_devices_with_stats[8];
-    $$o{"diskStatsSectorsWritten.$i"}      = $block_devices_with_stats[9]; 
-    $$o{"diskStatsMsSpentWriting.$i"}      = $block_devices_with_stats[10];
-    $$o{"diskStatsIOInProgress.$i"}        = $block_devices_with_stats[11];
-    $$o{"diskStatsMsSpentInIO.$i"}         = $block_devices_with_stats[12];
-    $$o{"diskStatsWeightedMsSpentInIO.$i"} = $block_devices_with_stats[13];
-
+    $$o{"diskStatsIndex.$i"}                    = $i;
+    $$o{"diskStatsName.$i"}                     = $block_devices_with_stats[2];
+    $$o{"diskStatsReadsCompleted.$i"}           = $block_devices_with_stats[3];
+    $$o{"diskStatsReadsMerged.$i"}              = $block_devices_with_stats[4];
+    $$o{"diskStatsSectorsRead.$i"}              = $block_devices_with_stats[5];
+    $$o{"diskStatsMsSpentReading.$i"}           = $block_devices_with_stats[6];
+    $$o{"diskStatsWritesCompleted.$i"}          = $block_devices_with_stats[7];
+    $$o{"diskStatsWritesMerged.$i"}             = $block_devices_with_stats[8];
+    $$o{"diskStatsSectorsWritten.$i"}           = $block_devices_with_stats[9];
+    $$o{"diskStatsMsSpentWriting.$i"}           = $block_devices_with_stats[10];
+    $$o{"diskStatsIOInProgress.$i"}             = $block_devices_with_stats[11];
+    $$o{"diskStatsMsSpentInIO.$i"}              = $block_devices_with_stats[12];
+    $$o{"diskStatsWeightedMsSpentInIO.$i"}      = $block_devices_with_stats[13];
+    $$o{"diskStatsMeasurementTimestampMs.$i"}   = int(time*1000);
+    if (exists($diskStats[$i])) {
+        # time spent in io divided by overall time and multiplied by 100%
+        # this displays percentage of time in io in the last cycle
+        if ( $$o{"diskStatsMeasurementTimestampMs.$i"} - $diskStats[$i]{"diskStatsMeasurementTimestampMs.$i"} > 0 ) {
+            $$o{"diskStatsUtilisation.$i"}      = ( $$o{"diskStatsMsSpentInIO.$i"}            - $diskStats[$i]{"diskStatsMsSpentInIO.$i"} )
+                                                / ( $$o{"diskStatsMeasurementTimestampMs.$i"} - $diskStats[$i]{"diskStatsMeasurementTimestampMs.$i"} )
+                                                * 100;
+        } else {
+            $$o{"diskStatsUtilisation.$i"}      = 0;
+        }
+        if ( $$o{"diskStatsReadsCompleted.$i"} + $$o{"diskStatsWritesCompleted.$i"} - $diskStats[$i]{"diskStatsTransfers.$i"}  > 0 ){
+            $$o{"diskStatsAvgWait.$i"}          = ( $$o{"diskStatsMsSpentInIO.$i"}    - $diskStats[$i]{"diskStatsMsSpentInIO.$i"} )
+                                                / ( $$o{"diskStatsReadsCompleted.$i"} + $$o{"diskStatsWritesCompleted.$i"} - $diskStats[$i]{"diskStatsTransfers.$i"} );
+        } else {
+            $$o{"diskStatsAvgWait.$i"}          = 0;
+        }
+    } else {
+        $$o{"diskStatsUtilisation.$i"}          = 0;
+        $$o{"diskStatsAvgWait.$i"}              = 0;
+    };
+    $diskStats[$i]{"diskStatsMsSpentInIO.$i"} = $$o{"diskStatsMsSpentInIO.$i"};
+    $diskStats[$i]{"diskStatsMeasurementTimestampMs.$i"} = $$o{"diskStatsMeasurementTimestampMs.$i"};
+    $diskStats[$i]{"diskStatsTransfers.$i"} = $$o{"diskStatsReadsCompleted.$i"} + $$o{"diskStatsWritesCompleted.$i"};
     $i++;
   }
 
