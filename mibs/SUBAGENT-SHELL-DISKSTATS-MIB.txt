@@ -44,21 +44,22 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
  
   diskStatsTableEntry ::= 
     SEQUENCE { 
-        diskStatsIndex                 Integer32,
-        diskStatsName                  OCTET STRING,
-        diskStatsReadsCompleted        Counter64,
-        diskStatsReadsMerged           Counter64,
-        diskStatsSectorsRead           Counter64,
-        diskStatsMsSpentReading        Counter64,
-        diskStatsWritesCompleted       Counter64,
-        diskStatsWritesMerged          Counter64,
-        diskStatsSectorsWritten        Counter64,
-        diskStatsMsSpentWriting        Counter64,
-        diskStatsIOInProgress          Counter64,
-        diskStatsMsSpentInIO           Counter64,
-        diskStatsWeightedMsSpentInIO   Counter64,
-        diskStatsUtilisation           Gauge32,
-        diskStatsAvgWait               Gauge32,
+        diskStatsIndex                  Integer32,
+        diskStatsName                   OCTET STRING,
+        diskStatsReadsCompleted         Counter64,
+        diskStatsReadsMerged            Counter64,
+        diskStatsSectorsRead            Counter64,
+        diskStatsMsSpentReading         Counter64,
+        diskStatsWritesCompleted        Counter64,
+        diskStatsWritesMerged           Counter64,
+        diskStatsSectorsWritten         Counter64,
+        diskStatsMsSpentWriting         Counter64,
+        diskStatsIOInProgress           Counter64,
+        diskStatsMsSpentInIO            Counter64,
+        diskStatsWeightedMsSpentInIO    Counter64,
+        diskStatsMeasurementTimestampMs Counter64,
+        diskStatsUtilisation            OCTET STRING,
+        diskStatsAvgWait                OCTET STRING,
 
         
     } 
@@ -164,15 +165,22 @@ SUBAGENT-SHELL-DISKSTATS MODULE-IDENTITY
                 I/O completion time and the backlog that may be accumulating."
     ::= { diskStatsTableEntry 13 }
 
+    diskStatsMeasurementTimestampMs OBJECT-TYPE
+    SYNTAX      Counter64
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Milliseconds since epoch for current measurement. Is used to calculate %util and await"
+    ::= { diskStatsTableEntry 14 }
+
     diskStatsUtilisation OBJECT-TYPE
-    SYNTAX      Gauge32
+    SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "%utilisation in the last 300 seconds, may be 0 if there was no data collection"
     ::= { diskStatsTableEntry 15 }
 
     diskStatsAvgWait OBJECT-TYPE
-    SYNTAX      Gauge32
+    SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "average wait of an IO request. May be 0 if there was no data collection"
