@@ -1,4 +1,4 @@
-AC_INIT(net-snmp-subagent-shell, 2.1.3.1, abrikus@gmail.com)
+AC_INIT(net-snmp-subagent-shell, 2.2.0.0, abrikus@gmail.com)
 AM_INIT_AUTOMAKE
 AC_PROG_INSTALL
 AC_OUTPUT(Makefile)

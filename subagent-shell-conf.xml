@@ -11,4 +11,5 @@
         functionsFailedCount="ssFunctionsFailedCount"
         timeStamp="ssTimeStamp"
         totalExecTime="ssTotalExecTime"
+        use_fork="no"
 />

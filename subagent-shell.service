@@ -1,0 +1,14 @@
+[Unit]
+Description=Subagent Shell SNMP daemon.
+After=syslog.target network.target snmpd.service
+Requires=snmpd.service
+
+[Service]
+Type=forking
+Environment="OPTIONS=-d -p /var/run/subagent-shell.pid"
+EnvironmentFile=-/etc/sysconfig/subagent-shell
+ExecStart=/usr/bin/subagent-shell $OPTIONS
+PIDFile=/var/run/subagent-shell.pid
+
+[Install]
+WantedBy=multi-user.target
