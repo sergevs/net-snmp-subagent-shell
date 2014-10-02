@@ -1,5 +1,5 @@
 Name:       net-snmp-subagent-shell
-Version:    2.2.0.0
+Version:    2.2.0.1
 Release:    ssv1%{?dist}
 Summary:    Net SNMP subagent extends snmd mib
 License:    BSD
@@ -8,7 +8,7 @@ Source:     %name-%version.tar.gz
 BuildRoot:  %{_tmppath}/%{name}-%version-buildroot
 BuildArch:  noarch
 Packager:   Serge <abrikus@gmail.com>
-Requires:   curl ntp net-snmp
+Requires:   curl net-snmp
 BuildRequires: automake autoconf
 Provides: net-snmp-subagent
 Obsoletes: net-snmp-subagent
