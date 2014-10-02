@@ -420,7 +420,7 @@ sub daemonize {
       my $curTimeStamp;
       my %func_pid = ();
       my %func_errno = ();
-      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} == 'yes' ){
+      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ){
         # Initialize shared memory to blanks hashes but preserve time stamp.
         # It's required as childs *append* their data to the shared memory.
         semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
@@ -434,7 +434,7 @@ sub daemonize {
       my $s_time = scalar gettimeofday();
       foreach my $config_data ( @functions_config ){
         foreach my $func ( keys (%{$config_data->{'function'}}) ){
-          if ( defined($config->{'use_fork'}) && $config->{'use_fork'} == 'yes' ) {
+          if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ) {
             if ( $func_pid{$func} = fork ) {
             #    logMessage(LOG_INFO, "in parent for $func");
             # === parent ===
@@ -471,7 +471,7 @@ sub daemonize {
           }
         }
       }
-      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} == 'yes' ) {
+      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ) {
         for my $f ( keys %func_pid ){
           waitpid($func_pid{$f},0);
           $fStatus{$agentMib{functionsCount}} += 1;
