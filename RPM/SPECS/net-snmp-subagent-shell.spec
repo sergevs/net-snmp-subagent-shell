@@ -1,5 +1,5 @@
 Name:       net-snmp-subagent-shell
-Version:    2.2.0.1
+Version:    2.2.0.2
 Release:    ssv1%{?dist}
 Summary:    Net SNMP subagent extends snmd mib
 License:    BSD
