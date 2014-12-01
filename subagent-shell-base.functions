@@ -421,6 +421,7 @@ sub lastLoginsMIB {
 }
 
 sub execCommandMIB {
+  no strict "refs";
   my $o=shift;
   my $cfg=shift;
   my $i=1; 
@@ -430,13 +431,15 @@ sub execCommandMIB {
   foreach my $a (@{$cfg->{'args'}}) {
     my $ts=gettimeofday();
     $$o{"cmdOutMatched.$i"} = defined($a->{'match'})?2:0;
-    $$o{"cmdOutMatchString.$i"} = '';
+    $$o{"cmdOutMatchString.$i"} = $a->{'match'} if defined($a->{'match'});
 
     foreach (`$a->{'cmd'}`) {
       chomp;
       if ( defined($a->{'match'}) and /$a->{'match'}/ ) {
         $$o{"cmdOutMatched.$i"} = 1;
-        $$o{"cmdOutMatchString.$i"} = $1;
+        for (my $m=1;$m <= $#+; $m++) {
+          $$o{"cmdOutMatchString.$i.$m"} = $$m;
+        }
       }
     }
 
