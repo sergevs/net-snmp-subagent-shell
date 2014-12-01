@@ -100,6 +100,7 @@ sub apacheStatusMIB {
 }
 
 sub httpResponseMIB {
+  no strict "refs";
   my $o=shift;
   my $cfg=shift;
   my $cmd="curl -v -s -m $config->{'cmd_timeout'} "; #don't use -v -s -m options for curl args
@@ -110,12 +111,14 @@ sub httpResponseMIB {
   foreach my $a (@{$cfg->{'args'}}) {
     my $ts=gettimeofday();
     $$o{"httpRespMatched.$i"} = defined($a->{'match'})?2:0;
-    $$o{"httpRespMatchString.$i"} = '';
+    $$o{"httpRespMatchString.$i"} = $a->{'match'} if defined($a->{'match'});
     foreach (`($cmd $a->{'curl'} | sed 's/^/STDOUT:/') 2>&1`) {
       chomp;
       if ( /^STDOUT/ and defined($a->{'match'}) and /$a->{'match'}/ ) {
         $$o{"httpRespMatched.$i"} = 1;
-        $$o{"httpRespMatchString.$i"} = $1 if defined($1);
+        for (my $m=1;$m <= $#+; $m++) {
+          $$o{"httpRespMatchString.$i.$m"} = $$m;
+        }
       }
       $$o{"httpRespCode.$i"} = ( split )[2] if ( /^< HTTP\// );
     }
@@ -313,6 +316,7 @@ sub lastLoginsMIB {
 }
 
 sub execCommandMIB {
+  no strict "refs";
   my $o=shift;
   my $cfg=shift;
   my $i=1; 
@@ -322,13 +326,15 @@ sub execCommandMIB {
   foreach my $a (@{$cfg->{'args'}}) {
     my $ts=gettimeofday();
     $$o{"cmdOutMatched.$i"} = defined($a->{'match'})?2:0;
-    $$o{"cmdOutMatchString.$i"} = '';
+    $$o{"cmdOutMatchString.$i"} = $a->{'match'} if defined($a->{'match'});
 
     foreach (`$a->{'cmd'}`) {
       chomp;
       if ( defined($a->{'match'}) and /$a->{'match'}/ ) {
         $$o{"cmdOutMatched.$i"} = 1;
-        $$o{"cmdOutMatchString.$i"} = $1;
+        for (my $m=1;$m <= $#+; $m++) {
+          $$o{"cmdOutMatchString.$i.$m"} = $$m;
+        }
       }
     }
 
