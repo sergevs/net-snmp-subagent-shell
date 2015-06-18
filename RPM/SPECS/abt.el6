@@ -1,0 +1,4 @@
+pkgName='net-snmp-subagent-shell'
+specFile='RPM/SPECS/net-snmp-subagent-shell.el6.spec'
+vcsModules[$vcsModule]=$modBuild
+distCheckout='True'

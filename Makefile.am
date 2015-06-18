@@ -14,7 +14,7 @@ dist_man8d_DATA = subagent-shell.8
 dist_base_DATA = *.xml subagent-shell-base.functions
 dist_bin_SCRIPTS = subagent-shell
 
-EXTRA_DIST = subagent-shell.init.rhel subagent-shell.options debian 
+EXTRA_DIST = subagent-shell.init.rhel  subagent-shell.service subagent-shell.options debian 
 
 install-data-hook:
 	$(mkdir_p) $(DESTDIR)$(basedir)/conf.d
