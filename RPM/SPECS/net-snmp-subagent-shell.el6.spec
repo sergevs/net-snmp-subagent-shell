@@ -1,7 +1,7 @@
 Name:       net-snmp-subagent-shell
 Version:    2.2.0.3
 Release:    ssv1%{?dist}
-Summary:    Net SNMP subagent extends snmd mib
+Summary:    Net SNMP subagent extends snmpd mib
 License:    BSD
 Group:      Monitoring
 Source:     %name-%version.tar.gz
@@ -21,15 +21,18 @@ Net SNMP subagent executes arbitrary commands and provide results via snmpd
 %setup 
 
 %build
-
-%install
 %__rm -rf %buildroot
 %__aclocal
 %__automake --add-missing
 %__autoconf
-
 %configure
+
+%install
 %makeinstall
+%__install -d %buildroot%_sysconfdir/init.d
+%__install subagent-shell.init.rhel %buildroot%_sysconfdir/init.d/subagent-shell
+%__install -d %buildroot%_sysconfdir/sysconfig
+%__install subagent-shell.options %buildroot%_sysconfdir/sysconfig
 
 %files
 %defattr(-,root,root)
