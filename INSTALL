@@ -11,8 +11,11 @@ in the order the included sample to work you also need /usr/sbin/ntpdate utility
 Installation:
 
 Standard to GNU. 
-Use configure && make install with standard options.
-regenerate Makefile if required ( aclocal, automake, autoconf )
+aclocal
+automake --add-missing
+autoconf
+configure --prefix=/usr --sysconfdir=/etc # if you choose another directories, you have to amend path appropriately below
+make install DESTDIR=<target directory>
 
 3. run subagent-shell:
 way 1:
