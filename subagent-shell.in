@@ -381,6 +381,11 @@ sub daemonize {
             { logMessage (LOG_ERR, 'failed to register agent'); exit 1; }
     logMessage (LOG_NOTICE, 'AgentX is initialized in ' . ($amode==0?'subagent':'standalone') . ' mode' ); 
     if ( $amode == 1) {
+      $SIG{CHLD} = sub {
+        while( waitpid(-1, WNOHANG) >0 ) {};
+        logMessage(LOG_ERR, "Child process terminated or killed. Shutting down ...");
+        $running = 0;
+      };
       while($running) {
         eval {
           $agent->agent_check_and_process(1);
@@ -397,6 +402,12 @@ sub daemonize {
     }
   } else { 
 # ===== child =====
+    $SIG{INT} = sub {
+      logMessage(LOG_NOTICE, "SIGINT ignored, interrupt the parent process[$parent_pid] to stop.");
+    };
+    $SIG{TERM} = sub {
+      logMessage(LOG_NOTICE, "SIGTERM ignored, terminate the parent process[$parent_pid] to stop.");
+    };
     close CHILD;
     unless ( defined( $pid ) )      { logMessage(LOG_ERR, "cannot fork: $!"); exit 1; }
     unless (open STDIN, ">&PARENT") { logMessage(LOG_ERR, "can't dup STDIN $!"); exit 1; }
