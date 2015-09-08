@@ -26,7 +26,6 @@ $ENV{SNMP_PERSISTENT_FILE}="/tmp/subagent-shell.$$";
 our ($config, @functions_config, $reg_oid);
 my  ($shm_id, $sem_id);
 my  $running=1;
-my  $remove_pid_file;
 my  %agentMib = ( rootMIB => 'SUBAGENT-SHELL',
                   functionsCount => 'ssFunctionsCount',
                   functionsSuccessCount => 'ssFunctionsSuccessCount', 
@@ -42,6 +41,7 @@ my $opt = {
   agentx_socket => '',
   log_file => '',
   verbose => 0,
+  errors => 0,
   help => 0,
 };
 
@@ -56,6 +56,7 @@ Getopt::Long::GetOptions(
   'agentx-socket=s' => \$opt->{agentx_socket},
   'log-file|l=s' => \$opt->{log_file},
   'verbose|v+' => \$opt->{verbose},
+  'errors|e+' => \$opt->{errors},
   'help|h' => \$opt->{help},
 );
 
@@ -85,8 +86,9 @@ Options:
   -b,  --base-dir=DIR       Path to installation root (default $opt->{base_dir})
   -m,  --mib-dir=DIR        Path to mib_dir (default $opt->{mib_dir})
        --agentx-socket=FILE Path to agentx socket
-  -l,  --log-file=FILE      additionally log to a file 
-  -v,  --verbose            Output progress details
+  -l,  --log-file=FILE      Additionally log to a file 
+  -v,  --verbose            Output varios debug information, 3 levels defined
+  -e,  --errors             Test configuration at the initial run and stop if errors detected, 2 levels defined
   -h,  --help               Show this help information
 
 EOHELP
@@ -208,7 +210,7 @@ sub pollerHandler {
 #read and unpack
   my $shm_message;
   semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-  unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
+  unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory at " . __LINE__); }
   semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
   eval {
     unpackMessage( $shm_message, \%oData, \@sortedoids, \$dataTimeStamp );
@@ -255,6 +257,15 @@ sub pollerHandler {
   }
 }
 
+sub cleanUp {
+  shmctl($shm_id, IPC_RMID, 0);
+  semctl($sem_id, 0, IPC_RMID, 0);
+  unlink $ENV{SNMP_PERSISTENT_FILE} if -f $ENV{SNMP_PERSISTENT_FILE};
+  unlink $opt->{pid_file} if defined($opt->{pid_file});
+  close LOGFILE if defined($opt->{log_file});
+  closelog();
+}
+
 sub daemonize {
   my $pid = fork();
   if (! defined $pid) { die "fork failed: $!"; }
@@ -270,7 +281,6 @@ sub daemonize {
     if ( open PIDFILE, ">", $opt->{pid_file} ) {
       print PIDFILE "$$\n";
       close PIDFILE;
-      $remove_pid_file = $opt->{pid_file};
     } else {
       logMessage(LOG_WARNING, "Can't open pid-file $opt->{pid_file}, continuing without pid file.");
     }
@@ -396,17 +406,15 @@ sub daemonize {
       } 
       logMessage (LOG_NOTICE, 'AgentX shutdown' ); 
       $agent->shutdown();
-      unlink $remove_pid_file if ($remove_pid_file);
-      closelog();
-      close LOGFILE if defined($opt->{log_file});
+      cleanUp();
     }
   } else { 
 # ===== child =====
     $SIG{INT} = sub {
-      logMessage(LOG_NOTICE, "SIGINT ignored, interrupt the parent process[$parent_pid] to stop.");
+      logMessage(LOG_NOTICE, "SIGINT received, the parent process[$parent_pid] will be terminated.");
     };
     $SIG{TERM} = sub {
-      logMessage(LOG_NOTICE, "SIGTERM ignored, terminate the parent process[$parent_pid] to stop.");
+      logMessage(LOG_NOTICE, "SIGTERM received, the parent process[$parent_pid] will be terminated.");
     };
     close CHILD;
     unless ( defined( $pid ) )      { logMessage(LOG_ERR, "cannot fork: $!"); exit 1; }
@@ -416,6 +424,9 @@ sub daemonize {
     my %fStatus = (); 
     my $start_time;
     my $shm_message;
+    my $cTested = 0;
+    my $cTestFailed = 0;
+    my %fHash = ();
     no strict "refs";
 
     logMessage(LOG_NOTICE, "Starting poller");
@@ -431,21 +442,21 @@ sub daemonize {
       my $curTimeStamp;
       my %func_pid = ();
       my %func_errno = ();
-      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ){
+      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' && $cTested ){
         # Initialize shared memory to blanks hashes but preserve time stamp.
         # It's required as childs *append* their data to the shared memory.
         semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-        unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
+        unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory at " . __LINE__); }
         $curTimeStamp = unpack( 'S/A*', $shm_message );
         $shm_message = pack( 'S/A* S(S/A* S/A*)*', $curTimeStamp, scalar keys( %otree ), %otree );
         utf8::downgrade($shm_message);
-        unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
+        unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory at " . __LINE__); }
         semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
       }
       my $s_time = scalar gettimeofday();
       foreach my $config_data ( @functions_config ){
         foreach my $func ( keys (%{$config_data->{'function'}}) ){
-          if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ) {
+          if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' && $cTested ) {
             if ( $func_pid{$func} = fork ) {
             #    logMessage(LOG_INFO, "in parent for $func");
             # === parent ===
@@ -454,12 +465,12 @@ sub daemonize {
               eval {
                 my $f_errno = &$func( \%otree, $config_data->{'function'}->{$func} );
                 semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-                unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
+                unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory at " . __LINE__); }
                 my ( $curTimeStamp, %shm_data )= unpack( 'S/A* S/(S/A* S/A*)', $shm_message );
                 %otree = ( %shm_data, %otree );
                 $shm_message = pack( 'S/A* S(S/A* S/A*)*', $curTimeStamp, scalar keys( %otree ), %otree );
                 utf8::downgrade($shm_message);
-                unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
+                unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory at " . __LINE__); }
                 semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
                 exit($f_errno);
               } or do {
@@ -468,21 +479,37 @@ sub daemonize {
               };
             }
           } else {
-          eval {
-            if ( &$func( \%otree, $config_data->{'function'}->{$func} ) == 0 ) { 
-              $fStatus{$agentMib{functionsSuccessCount}} += 1;
-            } else {
+            my $mCall = 0;
+            if ( $cTested == 0 ) {
+              if ( defined( $fHash{$func} ) ) {
+                $fHash{$func}++ ;
+              } else {
+                $fHash{$func} = 1;
+              }
+            }
+            eval {
+              if ( &$func( \%otree, $config_data->{'function'}->{$func}, \$mCall ) == 0 ) { 
+                $fStatus{$agentMib{functionsSuccessCount}} += 1;
+              } else {
+                $fStatus{$agentMib{functionsFailedCount}} += 1;
+              } 
+            } or do { 
               $fStatus{$agentMib{functionsFailedCount}} += 1;
-            } 
-          } or do { 
-            $fStatus{$agentMib{functionsFailedCount}} += 1;
-            logMessage(LOG_WARNING, "function $func terminated abnormally");
-          };
-          $fStatus{$agentMib{functionsCount}} += 1;
+              logMessage(LOG_WARNING, "function $func terminated abnormally");
+            };
+            $fStatus{$agentMib{functionsCount}} += 1;
+            if ( $cTested == 0 && $fHash{$func} > 1 && $mCall == 0 ) {
+                logMessage(LOG_ERR, "function $func defined $fHash{$func} times but do not support multicall.") ; 
+                $cTestFailed = 1;
+            }
           }
         }
       }
-      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ) {
+      if ( $cTested == 0 && ( $opt->{errors} >= 1 && $cTestFailed == 1 || $opt->{errors} >= 2 && $fStatus{$agentMib{functionsFailedCount}} > 0 ) ) {
+        logMessage(LOG_ERR, "configuration test failed due to previous errors. Aborting ..." ); 
+        exit(1) 
+      }
+      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' && $cTested ) {
         for my $f ( keys %func_pid ){
           waitpid($func_pid{$f},0);
           $fStatus{$agentMib{functionsCount}} += 1;
@@ -493,7 +520,7 @@ sub daemonize {
           }
         }
         semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-        unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
+        unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory at " . __LINE__); }
         ( $curTimeStamp, %otree )= unpack( 'S/A* S/(S/A* S/A*)', $shm_message );
         semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
       }
@@ -523,21 +550,19 @@ sub daemonize {
         }
       }
       semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-      unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
+      unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory at " . __LINE__); }
       semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
 
       my ($rin, $rout)  = ('', '');
       vec($rin, fileno(STDIN), 1) = 1;
       my ($nfound, $timeleft) = select($rout=$rin, undef, undef, $config->{'poller_cycle'});
-      if ( $nfound == 1 ) {
+      if ( $nfound != 0 ) {
         logMessage(LOG_NOTICE, "Connection with AgentX lost, shutdown poller.");
-        shmctl($shm_id, IPC_RMID, 0);
-        semctl($sem_id, 0, IPC_RMID, 0);
-        closelog;
-        close LOGFILE if defined($opt->{log_file});
-        unlink $ENV{SNMP_PERSISTENT_FILE} if -f $ENV{SNMP_PERSISTENT_FILE};
+        cleanUp();
         exit 0; 
       }
+      $cTested = 1;
+      undef %fHash;
     }
   }
 }
