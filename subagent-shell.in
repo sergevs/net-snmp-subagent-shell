@@ -181,6 +181,9 @@ sub readConfig {
     my $x = XML::Simple->new(ForceArray=>1);
     push @functions_config, $x->XMLin($f_config);
   }
+  if ( $opt->{verbose} > 2 ) {
+    logMessage(LOG_DEBUG, "Configuration Dump:\n" . Data::Dumper->Dump( [ \@functions_config ] ));
+  }
 }
 
 sub pollerInfo {
