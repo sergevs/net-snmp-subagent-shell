@@ -10,7 +10,7 @@ use NetSNMP::agent::default_store (':all');
 use NetSNMP::ASN qw(:all);
 use NetSNMP::OID (':all');
 use SNMP;
-use IPC::SysV qw(IPC_CREAT IPC_PRIVATE IPC_RMID S_IRWXU);
+use IPC::SysV qw(IPC_CREAT IPC_PRIVATE IPC_RMID S_IRWXU S_IRUSR S_IWUSR IPC_NOWAIT);
 use Socket;
 use POSIX qw(:sys_wait_h strftime locale_h);
 use Time::HiRes qw( gettimeofday );
@@ -24,7 +24,7 @@ use Data::Dumper;
 $ENV{SNMP_PERSISTENT_FILE}="/tmp/subagent-shell.$$";
 
 our ($config, @functions_config, $reg_oid);
-my  ($shm_id, $sem_id);
+my  ($shm_id, $sem_id, $mQueue);
 my  $running=1;
 my  %agentMib = ( rootMIB => 'SUBAGENT-SHELL',
                   functionsCount => 'ssFunctionsCount',
@@ -263,6 +263,7 @@ sub pollerHandler {
 sub cleanUp {
   shmctl($shm_id, IPC_RMID, 0);
   semctl($sem_id, 0, IPC_RMID, 0);
+  msgctl($mQueue, IPC_RMID, 0) if $mQueue >= 0 ;
   unlink $ENV{SNMP_PERSISTENT_FILE} if -f $ENV{SNMP_PERSISTENT_FILE};
   unlink $opt->{pid_file} if defined($opt->{pid_file});
   close LOGFILE if defined($opt->{log_file});
@@ -380,6 +381,7 @@ sub daemonize {
     };
   }
 
+  unless (defined($mQueue=defined($config->{'use_fork'})?msgget(IPC_PRIVATE, IPC_CREAT | S_IRUSR | S_IWUSR):-1)) { logMessage(LOG_ERR, "can't msgget $!"); exit 1; };
   unless (defined($shm_id=shmget(IPC_PRIVATE, $config->{'shm_size'}, S_IRWXU)))   { logMessage(LOG_ERR, "can't shmget $!"); exit 1; }
   unless (defined($sem_id=semget($shm_id, 1, IPC_CREAT | 0700)))      { logMessage(LOG_ERR, "can't semctl $!"); exit 1; }
   unless (socketpair(CHILD, PARENT, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) { logMessage(LOG_ERR, "can't make sockepair $!"); exit 1; };
@@ -444,41 +446,28 @@ sub daemonize {
       %otree = (); 
       my $curTimeStamp;
       my %func_pid = ();
-      my %func_errno = ();
-      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' && $cTested ){
-        # Initialize shared memory to blanks hashes but preserve time stamp.
-        # It's required as childs *append* their data to the shared memory.
-        semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-        unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory at " . __LINE__); }
-        $curTimeStamp = unpack( 'S/A*', $shm_message );
-        $shm_message = pack( 'S/A* S(S/A* S/A*)*', $curTimeStamp, scalar keys( %otree ), %otree );
-        utf8::downgrade($shm_message);
-        unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory at " . __LINE__); }
-        semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
-      }
+      my $func_count = 1;
       my $s_time = scalar gettimeofday();
+
       foreach my $config_data ( @functions_config ){
         foreach my $func ( keys (%{$config_data->{'function'}}) ){
           if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' && $cTested ) {
-            if ( $func_pid{$func} = fork ) {
+            if ( $func_pid{$func . "($func_count)"} = fork ) {
             #    logMessage(LOG_INFO, "in parent for $func");
             # === parent ===
+            $func_count ++;
             } else {
             # === child  ===
+              %otree = ();
               eval {
                 my $f_errno = &$func( \%otree, $config_data->{'function'}->{$func} );
-                semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-                unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory at " . __LINE__); }
-                my ( $curTimeStamp, %shm_data )= unpack( 'S/A* S/(S/A* S/A*)', $shm_message );
-                %otree = ( %shm_data, %otree );
-                $shm_message = pack( 'S/A* S(S/A* S/A*)*', $curTimeStamp, scalar keys( %otree ), %otree );
-                utf8::downgrade($shm_message);
-                unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory at " . __LINE__); }
-                semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
+                my $msg =  pack( 'S(S/A* S/A*)*', scalar keys( %otree ), %otree );
+                utf8::downgrade($msg) || logMessage(LOG_ERR, "utf8::downgrade failed at " . __LINE__);
+                msgsnd( $mQueue, pack("l! a*", length($msg), $msg), 0) || logMessage(LOG_ERR, "msgsnd failed $!" );
                 exit($f_errno);
               } or do {
                 logMessage(LOG_WARNING, "function $func terminated abnormally");
-                exit(2);
+                exit(242);
               };
             }
           } else {
@@ -508,35 +497,43 @@ sub daemonize {
           }
         }
       }
+
       if ( $cTested == 0 && ( $opt->{errors} >= 1 && $cTestFailed == 1 || $opt->{errors} >= 2 && $fStatus{$agentMib{functionsFailedCount}} > 0 ) ) {
         logMessage(LOG_ERR, "configuration test failed due to previous errors. Aborting ..." ); 
         exit(1) 
       }
+
       if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' && $cTested ) {
         for my $f ( keys %func_pid ){
+          local $SIG{ALRM} = sub { 
+                              kill 9, $func_pid{$f}; 
+                              logMessage(LOG_ERR, "function ${f}[$func_pid{$f}] timed out and killed ..."); 
+                            };
+          alarm $config->{'cmd_timeout'}+1;
           waitpid($func_pid{$f},0);
-          $fStatus{$agentMib{functionsCount}} += 1;
-          if ( $? == 0 ) {
+          alarm 0; 
+
+          my $f_errno = $?;
+          if ( $f_errno == 0 ) {
               $fStatus{$agentMib{functionsSuccessCount}} += 1;
           } else {
               $fStatus{$agentMib{functionsFailedCount}} += 1;
           }
+          $fStatus{$agentMib{functionsCount}} += 1;
+          if ( msgrcv( $mQueue, my $r_buf, $config->{'shm_size'}-1, 0, IPC_NOWAIT ) ) {
+            my($r_len, $msg) = unpack( "l! a*", $r_buf );
+            my %r_otree =  unpack( 'S/(S/A* S/A*)', $msg );
+            %otree = ( %otree, %r_otree );
+          }  else {
+            logMessage(LOG_ERR, "function $f did not send any message to queue.")  if ( $f_errno != 242 );
+          }
         }
-        semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-        unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory at " . __LINE__); }
-        ( $curTimeStamp, %otree )= unpack( 'S/A* S/(S/A* S/A*)', $shm_message );
-        semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
       }
   #   add pollerInfo
       pollerInfo(\%otree,\%fStatus,$s_time);
       $shm_message = pack( 'S/A* S(S/A* S/A*)*', (split /\(|\)/, $otree{$agentMib{timeStamp}})[1], scalar keys( %otree ), %otree );
 
-      eval {
-        utf8::downgrade($shm_message);
-        1;
-      } or do {
-        logMessage(LOG_ERR, "exception caught at utf8::downgrade call" . @$);
-      };
+      utf8::downgrade($shm_message, 1) || logMessage(LOG_ERR, "utf8::downgrade failed at " . __LINE__);
 
       logMessage(LOG_ERR, "data size " . length($shm_message) ." is greater than configured shm_size " . $config->{'shm_size'} ) if length($shm_message) >= $config->{'shm_size'};
       if ( $opt->{verbose} >=1 ) {
