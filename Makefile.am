@@ -18,3 +18,7 @@ EXTRA_DIST = subagent-shell.init.rhel  subagent-shell.service subagent-shell.opt
 
 install-data-hook:
 	$(mkdir_p) $(DESTDIR)$(basedir)/conf.d
+
+check:	
+	perl -c subagent-shell-base.functions
+	perl -c subagent-shell
