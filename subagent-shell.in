@@ -178,7 +178,7 @@ sub readConfig {
   my $h = hostname;
   foreach my $f_config ( (glob "${subAgentDir}subagent-shell-*-conf.xml"), (glob "${subAgentDir}conf.d/${h}*-conf.xml")) {
     logMessage(LOG_DEBUG, "loading functions config from $f_config");
-    my $x = XML::Simple->new(ForceArray=>1);
+    my $x = XML::Simple->new( ForceArray=>1, KeyAttr => '' );
     push @functions_config, $x->XMLin($f_config);
   }
   if ( $opt->{verbose} > 2 ) {
@@ -450,7 +450,8 @@ sub daemonize {
       my $s_time = scalar gettimeofday();
 
       foreach my $config_data ( @functions_config ){
-        foreach my $func ( keys (%{$config_data->{'function'}}) ){
+        foreach my $func_config ( @{$config_data->{'function'}} ) {
+          my $func = $func_config->{'id'};
           if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' && $cTested ) {
             if ( $func_pid{$func . "($func_count)"} = fork ) {
             #    logMessage(LOG_INFO, "in parent for $func");
@@ -460,7 +461,7 @@ sub daemonize {
             # === child  ===
               %otree = ();
               eval {
-                my $f_errno = &$func( \%otree, $config_data->{'function'}->{$func} );
+                my $f_errno = &$func( \%otree, $func_config );
                 my $msg =  pack( 'S(S/A* S/A*)*', scalar keys( %otree ), %otree );
                 utf8::downgrade($msg) || logMessage(LOG_ERR, "utf8::downgrade failed at " . __LINE__);
                 msgsnd( $mQueue, pack("l! a*", length($msg), $msg), 0) || logMessage(LOG_ERR, "msgsnd failed $!" );
@@ -480,7 +481,7 @@ sub daemonize {
               }
             }
             eval {
-              if ( &$func( \%otree, $config_data->{'function'}->{$func}, \$mCall ) == 0 ) { 
+              if ( &$func( \%otree, $func_config, \$mCall ) == 0 ) { 
                 $fStatus{$agentMib{functionsSuccessCount}} += 1;
               } else {
                 $fStatus{$agentMib{functionsFailedCount}} += 1;
