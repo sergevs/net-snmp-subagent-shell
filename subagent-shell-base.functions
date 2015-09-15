@@ -130,10 +130,11 @@ sub get_ntp_response {
 sub apacheStatusMIB {
   my $o=shift;
   my $cfg=shift;
-  my $mcall=shift; $$mcall=1; # the function support multicall
+  my $mcall=shift;
+  my $i=$$mcall;
+  $$mcall=0; # the function support multicall
 
   my $cmd="curl -s -m $config->{'cmd_timeout'} ";
-  my $i=1; # i is unused
   my $r=0;
   my $t=gettimeofday();
 
@@ -191,10 +192,11 @@ sub httpResponseMIB {
   no strict "refs";
   my $o=shift;
   my $cfg=shift;
-  my $mcall=shift; $$mcall=1; # the function support multicall
+  my $mcall=shift;
+  my $i=$$mcall;
+  $$mcall=0; # the function support multicall
 
   my $cmd="curl -v -s -m $config->{'cmd_timeout'} "; #don't use -v -s -m options for curl args
-  my $i=1; 
   my $r=0;
   my $t=gettimeofday();
 
@@ -430,9 +432,9 @@ sub execCommandMIB {
   no strict "refs";
   my $o=shift;
   my $cfg=shift;
-  my $mcall=shift; $$mcall=1; # the function support multicall
-
-  my $i=1; 
+  my $mcall=shift; 
+  my $i=$$mcall; 
+  $$mcall=0; # the function support multicall
   my $r=0;
   my $t=gettimeofday();
 
@@ -572,12 +574,13 @@ sub vmstatMIB {
 sub pingStatMIB {
   my $o = shift;
   my $cfg = shift;
-  my $mcall=shift; $$mcall=1; # the function support multicall
+  my $mcall=shift;
+  my $i=$$mcall;
+  $$mcall=0; # the function support multicall
 
   my $r = 0;
   my $t = gettimeofday();
   my @tdata;
-  my $i=0;
 
   foreach my $a ( @{$cfg->{'args'}} ) {
     my $ts = gettimeofday();

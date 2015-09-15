@@ -56,7 +56,7 @@ Getopt::Long::GetOptions(
   'agentx-socket=s' => \$opt->{agentx_socket},
   'log-file|l=s' => \$opt->{log_file},
   'verbose|v+' => \$opt->{verbose},
-  'errors|e+' => \$opt->{errors},
+  'exit-on-error|e+' => \$opt->{errors},
   'help|h' => \$opt->{help},
 );
 
@@ -88,7 +88,7 @@ Options:
        --agentx-socket=FILE Path to agentx socket
   -l,  --log-file=FILE      Additionally log to a file 
   -v,  --verbose            Output varios debug information, 3 levels defined
-  -e,  --errors             Test configuration at the initial run and stop if errors detected, 2 levels defined
+  -e,  --exit-on-error      Test configuration at the initial run and stop if errors detected, 2 levels defined
   -h,  --help               Show this help information
 
 EOHELP
@@ -181,7 +181,19 @@ sub readConfig {
     my $x = XML::Simple->new( ForceArray=>1, KeyAttr => '' );
     push @functions_config, $x->XMLin($f_config);
   }
-  if ( $opt->{verbose} > 2 ) {
+# parse configuration and make the config to have 1 arg for a function. that's makes functions to run in paralel
+  if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ) {
+    my @add_config;
+    foreach my $ca ( @functions_config ){
+      foreach my $config_data ( @{$ca->{'function'}} ) {
+        while ( defined($config_data->{'args'}) && scalar ( @{$config_data->{'args'}} ) > 1 )  {
+          push @add_config ,  { 'function'=>[ { 'id'=>$config_data->{'id'}, 'args'=>[ pop @{$config_data->{'args'}} ] } ] };
+        }
+      }
+    } 
+    push @functions_config, @add_config;
+  }
+  if ( $opt->{verbose} > 0 ) {
     logMessage(LOG_DEBUG, "Configuration Dump:\n" . Data::Dumper->Dump( [ \@functions_config ] ));
   }
 }
@@ -381,7 +393,7 @@ sub daemonize {
     };
   }
 
-  unless (defined($mQueue=defined($config->{'use_fork'})?msgget(IPC_PRIVATE, IPC_CREAT | S_IRUSR | S_IWUSR):-1)) { logMessage(LOG_ERR, "can't msgget $!"); exit 1; };
+  unless (defined($mQueue=defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes'?msgget(IPC_PRIVATE, IPC_CREAT | S_IRUSR | S_IWUSR):-1)) { logMessage(LOG_ERR, "can't msgget $!"); exit 1; };
   unless (defined($shm_id=shmget(IPC_PRIVATE, $config->{'shm_size'}, S_IRWXU)))   { logMessage(LOG_ERR, "can't shmget $!"); exit 1; }
   unless (defined($sem_id=semget($shm_id, 1, IPC_CREAT | 0700)))      { logMessage(LOG_ERR, "can't semctl $!"); exit 1; }
   unless (socketpair(CHILD, PARENT, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) { logMessage(LOG_ERR, "can't make sockepair $!"); exit 1; };
@@ -444,6 +456,7 @@ sub daemonize {
                   $agentMib{timeStamp}=>strftime('%d-%b-%Y %H:%M:%S (%s)',localtime), 
                   $agentMib{totalExecTime}=>0);
       %otree = (); 
+      %fHash = ();
       my $curTimeStamp;
       my %func_pid = ();
       my $func_count = 1;
@@ -452,7 +465,13 @@ sub daemonize {
       foreach my $config_data ( @functions_config ){
         foreach my $func_config ( @{$config_data->{'function'}} ) {
           my $func = $func_config->{'id'};
-          if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' && $cTested ) {
+          if ( defined( $fHash{$func} ) ) {
+            $fHash{$func} ++;
+          } else {
+            $fHash{$func} = 1;
+          }
+          my $mCall =  $fHash{$func};
+          if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ) {
             if ( $func_pid{$func . "($func_count)"} = fork ) {
             #    logMessage(LOG_INFO, "in parent for $func");
             # === parent ===
@@ -461,8 +480,8 @@ sub daemonize {
             # === child  ===
               %otree = ();
               eval {
-                my $f_errno = &$func( \%otree, $func_config );
-                my $msg =  pack( 'S(S/A* S/A*)*', scalar keys( %otree ), %otree );
+                my $f_errno = &$func( \%otree, $func_config, \$mCall );
+                my $msg =  pack( 'S/A* S S(S/A* S/A*)*', $func, $mCall , scalar keys( %otree ), %otree );
                 utf8::downgrade($msg) || logMessage(LOG_ERR, "utf8::downgrade failed at " . __LINE__);
                 msgsnd( $mQueue, pack("l! a*", length($msg), $msg), 0) || logMessage(LOG_ERR, "msgsnd failed $!" );
                 exit($f_errno);
@@ -472,14 +491,6 @@ sub daemonize {
               };
             }
           } else {
-            my $mCall = 0;
-            if ( $cTested == 0 ) {
-              if ( defined( $fHash{$func} ) ) {
-                $fHash{$func}++ ;
-              } else {
-                $fHash{$func} = 1;
-              }
-            }
             eval {
               if ( &$func( \%otree, $func_config, \$mCall ) == 0 ) { 
                 $fStatus{$agentMib{functionsSuccessCount}} += 1;
@@ -491,20 +502,15 @@ sub daemonize {
               logMessage(LOG_WARNING, "function $func terminated abnormally");
             };
             $fStatus{$agentMib{functionsCount}} += 1;
-            if ( $cTested == 0 && $fHash{$func} > 1 && $mCall == 0 ) {
-                logMessage(LOG_ERR, "function $func defined $fHash{$func} times but do not support multicall.") ; 
+            if ( $cTested == 0 && $fHash{$func} > 1 && $mCall != 0 ) {
+                logMessage(LOG_ERR, "function $func defined $fHash{$func} times but does not support multicall.") ; 
                 $cTestFailed = 1;
             }
           }
         }
       }
 
-      if ( $cTested == 0 && ( $opt->{errors} >= 1 && $cTestFailed == 1 || $opt->{errors} >= 2 && $fStatus{$agentMib{functionsFailedCount}} > 0 ) ) {
-        logMessage(LOG_ERR, "configuration test failed due to previous errors. Aborting ..." ); 
-        exit(1) 
-      }
-
-      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' && $cTested ) {
+      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ) {
         for my $f ( keys %func_pid ){
           local $SIG{ALRM} = sub { 
                               kill 9, $func_pid{$f}; 
@@ -523,10 +529,16 @@ sub daemonize {
           $fStatus{$agentMib{functionsCount}} += 1;
           if ( msgrcv( $mQueue, my $r_buf, $config->{'shm_size'}-1, 0, IPC_NOWAIT ) ) {
             my($r_len, $msg) = unpack( "l! a*", $r_buf );
-            my %r_otree =  unpack( 'S/(S/A* S/A*)', $msg );
+            my ($func, $mCall, %r_otree ) =  unpack( 'S/A* S S/(S/A* S/A*)', $msg );
             %otree = ( %otree, %r_otree );
+
+            if ( $cTested == 0 && $fHash{$func} > 1 && $mCall != 0 ) {
+                logMessage(LOG_ERR, "function $func defined $fHash{$func} times but does not support multicall.") ; 
+                $cTestFailed = 1;
+            }
+
           }  else {
-            logMessage(LOG_ERR, "function $f did not send any message to queue.")  if ( $f_errno != 242 );
+            logMessage(LOG_ERR, "a function did not send any message to queue. see previous erros.")  if ( $f_errno != 242 );
           }
         }
       }
@@ -562,8 +574,13 @@ sub daemonize {
         cleanUp();
         exit 0; 
       }
+
+      if ( $cTested == 0 && ( $opt->{errors} >= 1 && $cTestFailed == 1 || $opt->{errors} >= 2 && $fStatus{$agentMib{functionsFailedCount}} > 0 ) ) {
+        logMessage(LOG_ERR, "configuration test failed due to previous errors. Aborting ..." ); 
+        exit(1) 
+      }
+
       $cTested = 1;
-      undef %fHash;
     }
   }
 }
