@@ -562,6 +562,12 @@ sub daemonize {
           logMessage(LOG_DEBUG, "OIDS from unpackOData: $o = $t , $v" );
         }
       }
+
+      if ( $cTested == 0 && ( $opt->{errors} >= 1 && $cTestFailed == 1 || $opt->{errors} >= 2 && $fStatus{$agentMib{functionsFailedCount}} > 0 ) ) {
+        logMessage(LOG_ERR, "configuration test failed due to previous errors. Aborting ..." ); 
+        exit(1) 
+      }
+
       semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
       unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory at " . __LINE__); }
       semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
@@ -573,11 +579,6 @@ sub daemonize {
         logMessage(LOG_NOTICE, "Connection with AgentX lost, shutdown poller.");
         cleanUp();
         exit 0; 
-      }
-
-      if ( $cTested == 0 && ( $opt->{errors} >= 1 && $cTestFailed == 1 || $opt->{errors} >= 2 && $fStatus{$agentMib{functionsFailedCount}} > 0 ) ) {
-        logMessage(LOG_ERR, "configuration test failed due to previous errors. Aborting ..." ); 
-        exit(1) 
       }
 
       $cTested = 1;
