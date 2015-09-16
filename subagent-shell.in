@@ -84,7 +84,7 @@ Options:
   -d.  --daemon             Work as daemon
   -p,  --pid-file=FILE      Set path to pid file (for daemon mode only)
   -b,  --base-dir=DIR       Path to installation root (default $opt->{base_dir})
-  -m,  --mib-dir=DIR        Path to mib_dir (default $opt->{mib_dir})
+  -m,  --mib-dir=DIR        Path to mib_dir (default $mibDir)
        --agentx-socket=FILE Path to agentx socket
   -l,  --log-file=FILE      Additionally log to a file 
   -v,  --verbose            Output varios debug information, 3 levels defined
