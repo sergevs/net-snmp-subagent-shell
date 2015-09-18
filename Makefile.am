@@ -11,8 +11,7 @@ man8ddir = $(mandir)/man8
 man8d_DATA = subagent-shell.8
 dist_man8d_DATA = subagent-shell.8
 
-dist_base_DATA = *.xml subagent-shell-base.functions
-dist_bin_SCRIPTS = subagent-shell
+dist_base_DATA = subagent-shell-conf.xml subagent-shell-functions-conf.xml subagent-shell-base.functions subagent-shell-test
 
 EXTRA_DIST = subagent-shell.init.rhel  subagent-shell.service subagent-shell.options debian 
 
@@ -22,3 +21,6 @@ install-data-hook:
 check:	
 	perl -c subagent-shell-base.functions
 	perl -c subagent-shell
+
+test:
+	./subagent-shell-test
