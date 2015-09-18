@@ -24,7 +24,7 @@ function log {
 
 function snmp_get {
   log "Requesting $1"
-  snmpwalk -v2c -M+$T_DIR/subagent-shell/mibs -mALL -c public localhost:$S_PORT $1 | tee --append $T_DIR/subagent-shell/subagent-shell-test.log
+  snmpwalk -v2c -M+$T_DIR/subagent-shell/mibs -m+SNMPv2-MIB -m+SUBAGENT-SHELL-MIB -c public localhost:$S_PORT $1 | tee --append $T_DIR/subagent-shell/subagent-shell
   if [[ $? -ne 0 ]]; then
     log "ERR: an error requesting $1 from local snmpd"
     TEST_OK=1
@@ -33,7 +33,7 @@ function snmp_get {
 
 function snmp_check_value {
   log "Requesting $1 and checking the result against $2"
-  r=`snmpwalk -v2c -M+$T_DIR/subagent-shell/mibs -mALL -c public -Ovq localhost:$S_PORT $1`
+  r=`snmpwalk -v2c -M+$T_DIR/subagent-shell/mibs -m+SNMPv2-MIB -mSUBAGENT-SHELL-MIB -c public -Ovq localhost:$S_PORT $1`
   if [[ $? -ne 0 ]]; then
     log "ERR: an error requesting $1"
     TEST_OK=1
@@ -70,8 +70,6 @@ log "Starting local snmpd"
 export SNMP_PERSISTENT_DIR=$T_DIR/snmpd
 /usr/sbin/snmpd -Cc $T_DIR/snmpd/snmpd.conf -Lf $T_DIR/snmpd/snmpd.out -p $T_DIR/snmpd/snmpd.pid -I -smux -x $T_DIR/snmpd/agentX udp:$S_PORT
 
-snmp_get sysDescr
-
 log "Generating(no fork) subagent-shell/subagent-shell-conf.xml"
 cat <<EOF > $T_DIR/subagent-shell/subagent-shell-conf.xml
 <?xml version='1.0'?>
@@ -103,6 +101,8 @@ EOF
 
 ln -s $P_DIR/subagent-shell-base.functions $T_DIR/subagent-shell/
 ln -s $P_DIR/mibs $T_DIR/subagent-shell/
+
+snmp_get sysDescr
 
 restart_subagent
 snmp_get SUBAGENT-SHELL
