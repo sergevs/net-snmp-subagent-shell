@@ -548,7 +548,11 @@ sub daemonize {
 
       utf8::downgrade($shm_message, 1) || logMessage(LOG_ERR, "utf8::downgrade failed at " . __LINE__);
 
-      logMessage(LOG_ERR, "data size " . length($shm_message) ." is greater than configured shm_size " . $config->{'shm_size'} ) if length($shm_message) >= $config->{'shm_size'};
+      if ( length($shm_message) >= $config->{'shm_size'} ) {
+        logMessage(LOG_ERR, "data size " . length($shm_message) ." is greater than configured shm_size " . $config->{'shm_size'} );
+        $cTestFailed = 1 if $cTested == 0;
+      }
+
       if ( $opt->{verbose} >=1 ) {
         foreach my $k (sort keys %otree) { logMessage(LOG_DEBUG, "MIB from otree: $k => $otree{$k}" );}
       }
