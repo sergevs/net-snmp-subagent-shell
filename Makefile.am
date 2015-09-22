@@ -1,4 +1,4 @@
-bin_SCRIPTS = subagent-shell
+bin_SCRIPTS = subagent-shell subagent-shell-test
 
 basedir = $(sysconfdir)/snmp/subagent-shell
 base_DATA =  *.xml subagent-shell-base.functions
@@ -11,7 +11,7 @@ man8ddir = $(mandir)/man8
 man8d_DATA = subagent-shell.8
 dist_man8d_DATA = subagent-shell.8
 
-dist_base_DATA = subagent-shell-conf.xml subagent-shell-functions-conf.xml subagent-shell-base.functions subagent-shell-test
+dist_base_DATA = subagent-shell-conf.xml subagent-shell-functions-conf.xml subagent-shell-base.functions
 
 EXTRA_DIST = subagent-shell.init.rhel  subagent-shell.service subagent-shell.options debian 
 
@@ -23,4 +23,18 @@ check:
 	perl -c subagent-shell
 
 test:
-	./subagent-shell-test
+	if test -z "$(SNMPD)" ; then \
+		echo "snmpd is not found"; \
+		exit 1; \
+	fi 
+	echo $(SNMPWALK) snmpwalk is not found
+	if test -z "$(SNMPWALK)" ; then \
+		echo "snmpwalk is not found"; \
+		exit 1; \
+	fi 
+	make all
+	make check
+	/bin/sh subagent-shell-test
+
+clean:
+	rm -rf stest subagent-shell subagent-shell-test
