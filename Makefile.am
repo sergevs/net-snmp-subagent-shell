@@ -27,7 +27,6 @@ test:
 		echo "snmpd is not found"; \
 		exit 1; \
 	fi 
-	echo $(SNMPWALK) snmpwalk is not found
 	if test -z "$(SNMPWALK)" ; then \
 		echo "snmpwalk is not found"; \
 		exit 1; \
