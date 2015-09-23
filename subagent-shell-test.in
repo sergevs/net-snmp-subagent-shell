@@ -92,6 +92,8 @@ cat <<EOF > $T_DIR/subagent-shell/subagent-shell-conf.xml
         functionsFailedCount="ssFunctionsFailedCount"
         timeStamp="ssTimeStamp"
         totalExecTime="ssTotalExecTime"
+        masterAgentPid="ssMasterAgentPid"
+        pollerPid="ssPollerPid"
         use_fork="no"
 />
 EOF
