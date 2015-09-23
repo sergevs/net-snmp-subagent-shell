@@ -11,5 +11,7 @@
         functionsFailedCount="ssFunctionsFailedCount"
         timeStamp="ssTimeStamp"
         totalExecTime="ssTotalExecTime"
+        masterAgentPid="ssMasterAgentPid"
+        pollerPid="ssPollerPid"
         use_fork="no"
 />
