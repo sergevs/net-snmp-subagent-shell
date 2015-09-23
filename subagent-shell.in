@@ -439,12 +439,21 @@ sub daemonize {
     close PARENT;
     my %otree = (); 
     my %fStatus = (); 
+    my %fStatusEx = (); 
     my $start_time;
     my $shm_message;
     my $cTested = 0;
     my $cTestFailed = 0;
     my %fHash = ();
     no strict "refs";
+    
+#extended information
+    if ( defined($config->{'masterAgentPid'}) &&  defined($config->{'pollerPid'}) ) {
+      $agentMib{masterAgentPid}=$config->{'masterAgentPid'};
+      $agentMib{pollerPid}=$config->{'pollerPid'};
+      %fStatusEx = ($agentMib{masterAgentPid}=>$parent_pid,
+                    $agentMib{pollerPid}=$config->{'pollerPid'}=>$$);
+    }
 
     logMessage(LOG_NOTICE, "Starting poller");
 
@@ -455,6 +464,8 @@ sub daemonize {
                   $agentMib{functionsFailedCount}=>0, 
                   $agentMib{timeStamp}=>strftime('%d-%b-%Y %H:%M:%S (%s)',localtime), 
                   $agentMib{totalExecTime}=>0);
+      while ( my ($k,$v) = each(%fStatusEx) ) { $fStatus{$k} = $v; }
+
       %otree = (); 
       %fHash = ();
       my $curTimeStamp;
