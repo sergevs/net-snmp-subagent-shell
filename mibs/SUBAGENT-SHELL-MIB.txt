@@ -53,4 +53,20 @@ SUBAGENT-SHELL MODULE-IDENTITY
     DESCRIPTION
         "Total execution time"
     ::= { ssPollerInfo 5 }
+
+  ssMasterAgentPid OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Master Agent Process Id"
+    ::= { ssPollerInfo 6 }
+
+  ssPollerPid OBJECT-TYPE
+    SYNTAX      INTEGER
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Poller Process Id"
+    ::= { ssPollerInfo 7 }
 END
