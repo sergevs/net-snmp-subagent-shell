@@ -4,7 +4,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH SUBAGENT-SHELL SECTION "September 16, 2013"
+.TH SUBAGENT-SHELL 8 "September 25, 2015"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -18,7 +18,7 @@
 .\" .sp <n>    insert n+1 empty lines
 .\" for manpage-specific macros, see man(7)
 .SH NAME
-subagent-shell \- is complete implementation of net-snmp subagent written on perl
+subagent-shell is a complete implementation of net-snmp subagent written on perl
 .SH SYNOPSIS
 .B subagent-shell
 .RI [ options ] 
@@ -27,34 +27,42 @@ subagent-shell \- is complete implementation of net-snmp subagent written on per
 .\" TeX users may be more comfortable with the \fB<whatever>\fP and
 .\" \fI<whatever>\fP escape sequences to invode bold face and italics,
 .\" respectively.
-\fBsubagent-shell\fP is net-snmp agent which provides a simple interface to extend snmpd functionality and allow to define a function or execute arbitrary command and provide it's results via SNMP
+\fBsubagent-shell\fP is net-snmp agent provides a simple interface to extend snmpd functionality via perl functions and provide it's results via SNMP. Comes whith predefined functions library which allows to execute arbitry command, check http results , etc ...
 .SH OPTIONS
 .TP
 .B \-h, \-\-help
-Show summary of options.
+Show summary of options
 .TP
 .B \-v, \-\-verbose
-Output varios debug information. Multiply options are allowed to increase verbosity.
+Output varios debug information. 3 levels defined to increase verbosity
 .TP
-.B  \-d.  \-\-daemon             
+.B  \-d,  \-\-daemon             
 Start in daemon mode
 .TP
 .B  \-p,  \-\-pid\-file=FILE      
 Set path to pid file (for daemon mode only)
 .TP
 .B  \-b,  \-\-base\-dir=DIR       
-Path to installation root (default /etc/snmp/subagent/)
+Path to installation root (default /etc/snmp/subagent-shell)
 .TP
 .B  \-m,  \-\-mib-dir=DIR        
-Path to mib_dir (default )
+Path to mib_dir (default /etc/snmp/subagent-shell/mibs)
 .TP
 .B  \-\-agentx-socket=FILE 
 Path to agentx socket
 .TP
 .B  \-l,  \-\-log\-file=FILE      
 Additionally log to a file 
+.TP
+.B  \-e,  \-\-exit\-on-error      
+Test configuration at the initial run and stop if errors detected, 2 levels defined:
+.br
+\-e exit on a configuration error
+.br
+\-ee exit on function failed
 
-.SH CONFIGURATION FILES
-/etc/snmp/subagent/subagent-shell-conf.xml /etc/snmp/subagent/subagent-shell-conf.xml
+.SH CONFIGURATION AND FUNCTIONS FILES
+subagent-shell-conf.xml, subagent-shell-conf.xml, subagent-shell-base.functions in default configuration directory /etc/snmp/subagent-shell
+
 .SH SEE ALSO
-.BR snmpd (8).
+snmpd(8)
