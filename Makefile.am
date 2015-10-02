@@ -1,4 +1,4 @@
-bin_SCRIPTS = subagent-shell subagent-shell-test
+bin_SCRIPTS = subagent-shell
 
 basedir = $(sysconfdir)/snmp/subagent-shell
 base_DATA =  *.xml subagent-shell-base.functions
@@ -13,7 +13,7 @@ dist_man8d_DATA = subagent-shell.8
 
 dist_base_DATA = subagent-shell-conf.xml subagent-shell-functions-conf.xml subagent-shell-base.functions
 
-EXTRA_DIST = subagent-shell.init.rhel  subagent-shell.service subagent-shell.options debian 
+EXTRA_DIST = subagent-shell.init.rhel subagent-shell.service subagent-shell.options
 
 install-data-hook:
 	$(mkdir_p) $(DESTDIR)$(basedir)/conf.d
