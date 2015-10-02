@@ -2,7 +2,7 @@ Source: net-snmp-subagent-shell
 Section: net
 Priority: extra
 Maintainer: Serge <abrikus@gmail.com>
-Build-Depends: debhelper (>= 8.0.0), autotools-dev
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, automake
 Standards-Version: 3.9.3
 Homepage: https://code.google.com/p/linux-administrator-tools/wiki/NetSNMPSubagentShell?tm=6
 
