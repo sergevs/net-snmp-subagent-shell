@@ -494,7 +494,7 @@ sub daemonize {
                 my $f_errno = &$func( \%otree, $func_config, \$mCall );
                 my $msg =  pack( 'S/A* S S(S/A* S/A*)*', $func, $mCall , scalar keys( %otree ), %otree );
                 utf8::downgrade($msg) || logMessage(LOG_ERR, "utf8::downgrade failed at " . __LINE__);
-                msgsnd( $mQueue, pack("l! a*", length($msg), $msg), 0) || logMessage(LOG_ERR, "msgsnd failed $!" );
+                msgsnd( $mQueue, pack("l! a*", length($msg), $msg), 0) || logMessage(LOG_ERR, "msgsnd failed for $func, error: $!. msglen:" . length($msg) . ". check /proc/sys/kernel/msgmax" ); 
                 exit($f_errno);
               } or do {
                 logMessage(LOG_WARNING, "function $func terminated abnormally");
