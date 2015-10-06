@@ -1,0 +1,12 @@
+**** This port installs net-snmp subagent-shell(subagent_shell) but does not start it by default.
+     If you want to auto-start subagent-shell, add the following to
+     /etc/rc.conf:
+
+     subagent_shell_enable="YES"
+    
+     configuration files, MIBS, functions are located at %%PREFIX%%/etc/snmp/subagent-shell
+
+     please note that in the order to run subagent-shell you have to run net-snmp snmpd
+     and configure agentx; add the following line to snmpd configuration file(snmpd.conf):
+
+     master  agentx
