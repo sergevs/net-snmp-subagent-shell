@@ -286,8 +286,10 @@ sub procCountMIB {
     my ($pid, $vsize, $stat) = split;
     if ( !defined($cfg->{'args'}[0]->{'extendedInfo'}) or $cfg->{'args'}[0]->{'extendedInfo'} eq 'on' ) {
       $$o{"procVirtualMemory.$pid"} = $vsize;
+      $$o{"procOpenFdCount.$pid"} = 0;
       if ( opendir ( my $dh, "/proc/$pid/fd" ) ) {
-        $$o{"procOpenFdCount.$pid"} = $#{[readdir $dh]} - 1;
+        my $c = $#{[readdir $dh]};
+        $$o{"procOpenFdCount.$pid"} = $c - 1 if $c>1;
         closedir $dh;
       } 
     }
@@ -580,40 +582,31 @@ sub pingStatMIB {
 
   my $r = 0;
   my $t = gettimeofday();
-  my @tdata;
 
   foreach my $a ( @{$cfg->{'args'}} ) {
     my $ts = gettimeofday();
     my $count = defined($a->{'count'})?$a->{'count'}:10;
     my $options = defined($a->{'options'})?$a->{'options'}:'';
-    $tdata[$i]->{'pid'} = open( $tdata[$i]->{'fh'} , "ping $options -q -c $count $a->{'host'} |" );
-    $tdata[$i]->{'host'} = $a->{'host'};
-    $i++;
-  }
-  for( $i=1; $i<=($#tdata+1); $i++ ) {
-    while ( readline ( $tdata[$i-1]->{'fh'} ) ) {
+    foreach (`ping $options -c $count $a->{'host'}`) {
       chomp;
-      if ( /^(\d+).+transmitted.+ (\d+).+received.+ ([\d\.]+).+loss.+ time (\d+)/ ) {
-	      $$o{"pingTransmitted.$i"} = $1;
-	      $$o{"pingReceived.$i"} = $2;
-	      $$o{"pingLoss.$i"} = $3;
-	      $$o{"pingExecTime.$i"} = $4/1000;
+      if ( /^(\d+).+transmitted.+ (\d+).+received.+ ([\d\.]+).+loss/ ) {
+        $$o{"pingTransmitted.$i"} = $1;
+        $$o{"pingReceived.$i"} = $2;
+        $$o{"pingLoss.$i"} = $3;
       } elsif ( /^(rtt|round-trip).+= ([\d\.]+)\/([\d\.]+)\/([\d\.]+)/ ) {
         $$o{"pingRttMin.$i"} = $2;
         $$o{"pingRttAvg.$i"} = $3;
         $$o{"pingRttMax.$i"} = $4;
       }
-    } 
-    while ( defined($$o{"pingIndex.$i"}) ) { $i++; } # detect if the function called previously and increase the index
-    $$o{"pingIndex.$i"} = $i;
-    $$o{"pingHost.$i"} = $tdata[$i-1]->{'host'};
-  }
+    }
 
-  for( $i=1; $i<=($#tdata+1); $i++ ) {
-    waitpid( $tdata[$i-1]->{'pid'}, 0 );
     my $cmd_r = $? >> 8;
+    $$o{"pingIndex.$i"} = $i;
+    $$o{"pingHost.$i"} = $a->{'host'} . ( defined($a->{'description'})?" \[$a->{'description'}\]":"" );
+    $$o{"pingExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"pingExecStatus.$i"} = $cmd_r;
     $r = $cmd_r if $cmd_r;
+    $i++;
   }
 
   $$o{'pingFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
