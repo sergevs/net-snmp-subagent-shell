@@ -1,4 +1,4 @@
-FROM sergevs42/centos6.base.x86_64
+FROM sergevs42/centos6.x86_64-base
 MAINTAINER Serge at abrikus@gmail.com
 
 RUN yum -y install bind-utils net-snmp net-snmp-utils && \
