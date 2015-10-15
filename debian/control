@@ -2,7 +2,7 @@ Source: net-snmp-subagent-shell
 Section: net
 Priority: extra
 Maintainer: Serge <abrikus@gmail.com>
-Build-Depends: debhelper (>= 8.0.0), autotools-dev, automake, libsnmp-perl, libxml-simple-perl, snmp-mibs-downloader, snmpd
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, automake, libsnmp-perl, libxml-simple-perl, snmp-mibs-downloader, snmpd, snmp
 Standards-Version: 3.9.3
 Homepage: https://github.com/sergevs/net-snmp-subagent-shell/
 
