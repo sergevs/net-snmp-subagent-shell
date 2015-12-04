@@ -6,6 +6,4 @@ Comes whith predefined functions library which allows to execute arbitry command
 
 For a complete description of usage and installation please visit [wiki home](../../wiki)
 
-The project goal is to supply any required for monitoring system data via SNMP.
-
-See also [zenpack](https://github.com/sergevs/ZenPacks.ssv.SubagentShell/wiki) implementation for [Zenoss](http://www.zenoss.org) 
+The project goal is to supply any required for monitoring system data(except logs) via SNMP.
