@@ -130,8 +130,11 @@ sub get_ntp_response {
 sub apacheStatusMIB {
   my $o=shift;
   my $cfg=shift;
+  my $mcall=shift;
+  my $i=$$mcall;
+  $$mcall=0; # the function support multicall
+
   my $cmd="curl -s -m $config->{'cmd_timeout'} ";
-  my $i=1; # i is unused
   my $r=0;
   my $t=gettimeofday();
 
@@ -167,6 +170,7 @@ sub apacheStatusMIB {
     }
 
     my $cmd_r = $? >> 8;
+    while ( defined($$o{"apsIndex.$i"}) ) { $i++; } # detect if the function called previously and increase the index 
     $$o{"apsIndex.$i"} = $i;
     $$o{"apsCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"apsCmdExecStatus.$i"} = $cmd_r;
@@ -188,8 +192,11 @@ sub httpResponseMIB {
   no strict "refs";
   my $o=shift;
   my $cfg=shift;
+  my $mcall=shift;
+  my $i=$$mcall;
+  $$mcall=0; # the function support multicall
+
   my $cmd="curl -v -s -m $config->{'cmd_timeout'} "; #don't use -v -s -m options for curl args
-  my $i=1; 
   my $r=0;
   my $t=gettimeofday();
 
@@ -210,6 +217,7 @@ sub httpResponseMIB {
     # don't return unmatch in the case of ERROR http code
     $$o{"httpRespMatched.$i"} = 0 if ( defined($$o{"httpRespCode.$i"}) and $$o{"httpRespCode.$i"} > 307 );
     my $cmd_r = $? >> 8;
+    while ( defined($$o{"httpRespIndex.$i"}) ) { $i++; } # detect if the function called previously and increase the index 
     $$o{"httpRespIndex.$i"} = $i;
     $$o{"httpRespCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"httpRespCmdExecStatus.$i"} = $cmd_r;
@@ -273,13 +281,15 @@ sub procCountMIB {
   $$o{'procZombie'} =   0;
   $$o{'procUninterruptible'} =   0;
 
-  foreach(`ps axopid=,vsize=,stat=`) {
+  foreach(`ps ax -opid= -ovsize= -ostat=`) {
     chomp;
     my ($pid, $vsize, $stat) = split;
     if ( !defined($cfg->{'args'}[0]->{'extendedInfo'}) or $cfg->{'args'}[0]->{'extendedInfo'} eq 'on' ) {
       $$o{"procVirtualMemory.$pid"} = $vsize;
+      $$o{"procOpenFdCount.$pid"} = 0;
       if ( opendir ( my $dh, "/proc/$pid/fd" ) ) {
-        $$o{"procOpenFdCount.$pid"} = $#{[readdir $dh]} - 1;
+        my $c = $#{[readdir $dh]};
+        $$o{"procOpenFdCount.$pid"} = $c - 1 if $c>1;
         closedir $dh;
       } 
     }
@@ -449,7 +459,9 @@ sub execCommandMIB {
   no strict "refs";
   my $o=shift;
   my $cfg=shift;
-  my $i=1; 
+  my $mcall=shift; 
+  my $i=$$mcall; 
+  $$mcall=0; # the function support multicall
   my $r=0;
   my $t=gettimeofday();
 
@@ -469,6 +481,7 @@ sub execCommandMIB {
     }
 
     my $cmd_r = $? >> 8;
+    while ( defined($$o{"cmdIndex.$i"}) ) { $i++; } # detect if the function called previously and increase the index 
     $$o{"cmdIndex.$i"} = $i;
     $$o{"cmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"cmdExecStatus.$i"} = $cmd_r;
@@ -588,42 +601,37 @@ sub vmstatMIB {
 sub pingStatMIB {
   my $o = shift;
   my $cfg = shift;
+  my $mcall=shift;
+  my $i=$$mcall;
+  $$mcall=0; # the function support multicall
+
   my $r = 0;
   my $t = gettimeofday();
-  my @tdata;
-  my $i=0;
 
   foreach my $a ( @{$cfg->{'args'}} ) {
     my $ts = gettimeofday();
     my $count = defined($a->{'count'})?$a->{'count'}:10;
     my $options = defined($a->{'options'})?$a->{'options'}:'';
-    $tdata[$i]->{'pid'} = open( $tdata[$i]->{'fh'} , "ping $options -q -c $count $a->{'host'} |" );
-    $tdata[$i]->{'host'} = $a->{'host'};
-    $i++;
-  }
-  for( $i=1; $i<=($#tdata+1); $i++ ) {
-    while ( readline ( $tdata[$i-1]->{'fh'} ) ) {
+    foreach (`ping $options -c $count $a->{'host'}`) {
       chomp;
-      if ( /^(\d+).+transmitted.+ (\d+).+received.+ ([\d\.]+).+loss.+ time (\d+)/ ) {
-	      $$o{"pingTransmitted.$i"} = $1;
-	      $$o{"pingReceived.$i"} = $2;
-	      $$o{"pingLoss.$i"} = $3;
-	      $$o{"pingExecTime.$i"} = $4/1000;
+      if ( /^(\d+).+transmitted.+ (\d+).+received.+ ([\d\.]+).+loss/ ) {
+        $$o{"pingTransmitted.$i"} = $1;
+        $$o{"pingReceived.$i"} = $2;
+        $$o{"pingLoss.$i"} = $3;
       } elsif ( /^(rtt|round-trip).+= ([\d\.]+)\/([\d\.]+)\/([\d\.]+)/ ) {
         $$o{"pingRttMin.$i"} = $2;
         $$o{"pingRttAvg.$i"} = $3;
         $$o{"pingRttMax.$i"} = $4;
       }
-    } 
-    $$o{"pingIndex.$i"} = $i;
-    $$o{"pingHost.$i"} = $tdata[$i-1]->{'host'};
-  }
+    }
 
-  for( $i=1; $i<=($#tdata+1); $i++ ) {
-    waitpid( $tdata[$i-1]->{'pid'}, 0 );
     my $cmd_r = $? >> 8;
+    $$o{"pingIndex.$i"} = $i;
+    $$o{"pingHost.$i"} = $a->{'host'} . ( defined($a->{'description'})?" \[$a->{'description'}\]":"" );
+    $$o{"pingExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
     $$o{"pingExecStatus.$i"} = $cmd_r;
     $r = $cmd_r if $cmd_r;
+    $i++;
   }
 
   $$o{'pingFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);

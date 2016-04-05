@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# PROVIDE: subagent-shell
+# REQUIRE: DAEMON snmpd
+#
+# Add the following line to /etc/rc.conf to enable subagent-shell:
+#
+# subagent_shell_enable="YES"
+# subagent_shell_flags="<set as needed>"
+
+. /etc/rc.subr
+
+name=subagent_shell
+rcvar=subagent_shell_enable
+
+load_rc_config subagent-shell
+
+subagent_shell_enable=${subagent_shell_enable:-"NO"}
+
+pidfile=${subagent_shell_pidfile:-"/var/run/subagent_shell.pid"}
+command_interpreter=%%PERL%%
+
+command=%%PREFIX%%/bin/${name}
+start_precmd=subagent_shell_precmd
+
+subagent_shell_precmd () {
+	rc_flags="-d -b /usr/local/etc/snmp/subagent-shell -p ${pidfile} ${rc_flags}"
+}
+
+
+run_rc_command "$1"

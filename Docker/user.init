@@ -1,0 +1,29 @@
+#!/bin/bash
+
+echo
+echo "Initialization ... "
+echo -n "starting snmpd: "
+/usr/sbin/snmpd && echo "OK" || echo "Failed"
+echo -n "starting subagent-shell: "
+/usr/bin/subagent-shell -d 
+
+cat <<EOF
+
+#######################################################################
+# This image is for demonstration purposes of net-snmp-subagent-shell #
+#  see also https://github.com/sergevs/net-snmp-subagent-shell/wiki   #
+#######################################################################
+
+subagent-shell executable is located at /usr/bin/subagent-shell
+function and configuration files are located at /etc/snmp/subagent-shell
+MIB files at /etc/snmp/subagent-shell/mibs
+
+if you modify configuration files you should restart subagent-shell to make settings in effect:
+pkill subagent-shell ; /usr/bin/subagent-shell -d
+
+try to run:
+snmpwalk -v2c -M+/etc/snmp/subagent-shell/mibs -mALL -c public localhost SUBAGENT-SHELL
+
+EOF
+
+/bin/bash -i

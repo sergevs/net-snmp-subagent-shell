@@ -1,0 +1,23 @@
+@dir etc/snmp/subagent-shell
+@dir etc/snmp/subagent-shell/mibs
+@dir etc/snmp/subagent-shell/conf.d
+bin/subagent_shell
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-APACHE-STATUS-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-DISKSTATS-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-DNSLOOKUP-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-EXEC-COMMAND-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-HTTP-RESPONSE-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-IP-CONNTRACK-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-LAST-LOGINS-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-MAILQ-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-NTPSYNC-STATUS-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-OSINFO-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-PING-STAT-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-PROC-STAT-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-RNDC-STAT-MIB.txt
+etc/snmp/subagent-shell/mibs/SUBAGENT-SHELL-VMSTAT-MIB.txt
+etc/snmp/subagent-shell/subagent-shell-base.functions
+etc/snmp/subagent-shell/subagent-shell-conf.xml
+etc/snmp/subagent-shell/subagent-shell-functions-conf.xml
+share/man/man8/subagent-shell.8

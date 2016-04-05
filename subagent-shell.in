@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!@PERL@
 
 use strict;
 use warnings;
@@ -10,7 +10,7 @@ use NetSNMP::agent::default_store (':all');
 use NetSNMP::ASN qw(:all);
 use NetSNMP::OID (':all');
 use SNMP;
-use IPC::SysV qw(IPC_CREAT IPC_PRIVATE IPC_RMID S_IRWXU);
+use IPC::SysV qw(IPC_CREAT IPC_PRIVATE IPC_RMID S_IRWXU S_IRUSR S_IWUSR IPC_NOWAIT);
 use Socket;
 use POSIX qw(:sys_wait_h strftime locale_h);
 use Time::HiRes qw( gettimeofday );
@@ -24,9 +24,8 @@ use Data::Dumper;
 $ENV{SNMP_PERSISTENT_FILE}="/tmp/subagent-shell.$$";
 
 our ($config, @functions_config, $reg_oid);
-my  ($shm_id, $sem_id);
+my  ($shm_id, $sem_id, $mQueue);
 my  $running=1;
-my  $remove_pid_file;
 my  %agentMib = ( rootMIB => 'SUBAGENT-SHELL',
                   functionsCount => 'ssFunctionsCount',
                   functionsSuccessCount => 'ssFunctionsSuccessCount', 
@@ -42,6 +41,7 @@ my $opt = {
   agentx_socket => '',
   log_file => '',
   verbose => 0,
+  errors => 0,
   help => 0,
 };
 
@@ -56,6 +56,7 @@ Getopt::Long::GetOptions(
   'agentx-socket=s' => \$opt->{agentx_socket},
   'log-file|l=s' => \$opt->{log_file},
   'verbose|v+' => \$opt->{verbose},
+  'exit-on-error|e+' => \$opt->{errors},
   'help|h' => \$opt->{help},
 );
 
@@ -83,10 +84,11 @@ Options:
   -d.  --daemon             Work as daemon
   -p,  --pid-file=FILE      Set path to pid file (for daemon mode only)
   -b,  --base-dir=DIR       Path to installation root (default $opt->{base_dir})
-  -m,  --mib-dir=DIR        Path to mib_dir (default $opt->{mib_dir})
+  -m,  --mib-dir=DIR        Path to mib_dir (default $mibDir)
        --agentx-socket=FILE Path to agentx socket
-  -l,  --log-file=FILE      additionally log to a file 
-  -v,  --verbose            Output progress details
+  -l,  --log-file=FILE      Additionally log to a file 
+  -v,  --verbose            Output varios debug information, 3 levels defined
+  -e,  --exit-on-error      Test configuration at the initial run and stop if errors detected, 2 levels defined
   -h,  --help               Show this help information
 
 EOHELP
@@ -176,8 +178,23 @@ sub readConfig {
   my $h = hostname;
   foreach my $f_config ( (glob "${subAgentDir}subagent-shell-*-conf.xml"), (glob "${subAgentDir}conf.d/${h}*-conf.xml")) {
     logMessage(LOG_DEBUG, "loading functions config from $f_config");
-    my $x = XML::Simple->new(ForceArray=>1);
+    my $x = XML::Simple->new( ForceArray=>1, KeyAttr => '' );
     push @functions_config, $x->XMLin($f_config);
+  }
+# parse configuration and make the config to have 1 arg for a function. that's makes functions to run in paralel
+  if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ) {
+    my @add_config;
+    foreach my $ca ( @functions_config ){
+      foreach my $config_data ( @{$ca->{'function'}} ) {
+        while ( defined($config_data->{'args'}) && scalar ( @{$config_data->{'args'}} ) > 1 )  {
+          push @add_config ,  { 'function'=>[ { 'id'=>$config_data->{'id'}, 'args'=>[ pop @{$config_data->{'args'}} ] } ] };
+        }
+      }
+    } 
+    push @functions_config, @add_config;
+  }
+  if ( $opt->{verbose} > 0 ) {
+    logMessage(LOG_DEBUG, "Configuration Dump:\n" . Data::Dumper->Dump( [ \@functions_config ] ));
   }
 }
 
@@ -208,7 +225,7 @@ sub pollerHandler {
 #read and unpack
   my $shm_message;
   semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-  unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
+  unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory at " . __LINE__); }
   semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
   eval {
     unpackMessage( $shm_message, \%oData, \@sortedoids, \$dataTimeStamp );
@@ -255,6 +272,16 @@ sub pollerHandler {
   }
 }
 
+sub cleanUp {
+  shmctl($shm_id, IPC_RMID, 0);
+  semctl($sem_id, 0, IPC_RMID, 0);
+  msgctl($mQueue, IPC_RMID, 0) if $mQueue >= 0 ;
+  unlink $ENV{SNMP_PERSISTENT_FILE} if -f $ENV{SNMP_PERSISTENT_FILE};
+  unlink $opt->{pid_file} if defined($opt->{pid_file});
+  close LOGFILE if defined($opt->{log_file});
+  closelog();
+}
+
 sub daemonize {
   my $pid = fork();
   if (! defined $pid) { die "fork failed: $!"; }
@@ -270,7 +297,6 @@ sub daemonize {
     if ( open PIDFILE, ">", $opt->{pid_file} ) {
       print PIDFILE "$$\n";
       close PIDFILE;
-      $remove_pid_file = $opt->{pid_file};
     } else {
       logMessage(LOG_WARNING, "Can't open pid-file $opt->{pid_file}, continuing without pid file.");
     }
@@ -367,6 +393,7 @@ sub daemonize {
     };
   }
 
+  unless (defined($mQueue=defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes'?msgget(IPC_PRIVATE, IPC_CREAT | S_IRUSR | S_IWUSR):-1)) { logMessage(LOG_ERR, "can't msgget $!"); exit 1; };
   unless (defined($shm_id=shmget(IPC_PRIVATE, $config->{'shm_size'}, S_IRWXU)))   { logMessage(LOG_ERR, "can't shmget $!"); exit 1; }
   unless (defined($sem_id=semget($shm_id, 1, IPC_CREAT | 0700)))      { logMessage(LOG_ERR, "can't semctl $!"); exit 1; }
   unless (socketpair(CHILD, PARENT, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) { logMessage(LOG_ERR, "can't make sockepair $!"); exit 1; };
@@ -381,6 +408,11 @@ sub daemonize {
             { logMessage (LOG_ERR, 'failed to register agent'); exit 1; }
     logMessage (LOG_NOTICE, 'AgentX is initialized in ' . ($amode==0?'subagent':'standalone') . ' mode' ); 
     if ( $amode == 1) {
+      $SIG{CHLD} = sub {
+        while( waitpid(-1, WNOHANG) >0 ) {};
+        logMessage(LOG_ERR, "Child process terminated or killed. Shutting down ...");
+        $running = 0;
+      };
       while($running) {
         eval {
           $agent->agent_check_and_process(1);
@@ -391,21 +423,37 @@ sub daemonize {
       } 
       logMessage (LOG_NOTICE, 'AgentX shutdown' ); 
       $agent->shutdown();
-      unlink $remove_pid_file if ($remove_pid_file);
-      closelog();
-      close LOGFILE if defined($opt->{log_file});
+      cleanUp();
     }
   } else { 
 # ===== child =====
+    $SIG{INT} = sub {
+      logMessage(LOG_NOTICE, "SIGINT received, the parent process[$parent_pid] will be terminated.");
+    };
+    $SIG{TERM} = sub {
+      logMessage(LOG_NOTICE, "SIGTERM received, the parent process[$parent_pid] will be terminated.");
+    };
     close CHILD;
     unless ( defined( $pid ) )      { logMessage(LOG_ERR, "cannot fork: $!"); exit 1; }
     unless (open STDIN, ">&PARENT") { logMessage(LOG_ERR, "can't dup STDIN $!"); exit 1; }
     close PARENT;
     my %otree = (); 
     my %fStatus = (); 
+    my %fStatusEx = (); 
     my $start_time;
     my $shm_message;
+    my $cTested = 0;
+    my $cTestFailed = 0;
+    my %fHash = ();
     no strict "refs";
+    
+#extended information
+    if ( defined($config->{'masterAgentPid'}) &&  defined($config->{'pollerPid'}) ) {
+      $agentMib{masterAgentPid}=$config->{'masterAgentPid'};
+      $agentMib{pollerPid}=$config->{'pollerPid'};
+      %fStatusEx = ($agentMib{masterAgentPid}=>$parent_pid,
+                    $agentMib{pollerPid}=$config->{'pollerPid'}=>$$);
+    }
 
     logMessage(LOG_NOTICE, "Starting poller");
 
@@ -416,88 +464,106 @@ sub daemonize {
                   $agentMib{functionsFailedCount}=>0, 
                   $agentMib{timeStamp}=>strftime('%d-%b-%Y %H:%M:%S (%s)',localtime), 
                   $agentMib{totalExecTime}=>0);
+      while ( my ($k,$v) = each(%fStatusEx) ) { $fStatus{$k} = $v; }
+
       %otree = (); 
+      %fHash = ();
       my $curTimeStamp;
       my %func_pid = ();
-      my %func_errno = ();
-      if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ){
-        # Initialize shared memory to blanks hashes but preserve time stamp.
-        # It's required as childs *append* their data to the shared memory.
-        semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-        unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
-        $curTimeStamp = unpack( 'S/A*', $shm_message );
-        $shm_message = pack( 'S/A* S(S/A* S/A*)*', $curTimeStamp, scalar keys( %otree ), %otree );
-        utf8::downgrade($shm_message);
-        unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
-        semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
-      }
+      my $func_count = 1;
       my $s_time = scalar gettimeofday();
+
       foreach my $config_data ( @functions_config ){
-        foreach my $func ( keys (%{$config_data->{'function'}}) ){
+        foreach my $func_config ( @{$config_data->{'function'}} ) {
+          my $func = $func_config->{'id'};
+          if ( defined( $fHash{$func} ) ) {
+            $fHash{$func} ++;
+          } else {
+            $fHash{$func} = 1;
+          }
+          my $mCall =  $fHash{$func};
           if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ) {
-            if ( $func_pid{$func} = fork ) {
+            if ( $func_pid{$func . "($func_count)"} = fork ) {
             #    logMessage(LOG_INFO, "in parent for $func");
             # === parent ===
+            $func_count ++;
             } else {
             # === child  ===
+              %otree = ();
               eval {
-                my $f_errno = &$func( \%otree, $config_data->{'function'}->{$func} );
-                semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-                unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
-                my ( $curTimeStamp, %shm_data )= unpack( 'S/A* S/(S/A* S/A*)', $shm_message );
-                %otree = ( %shm_data, %otree );
-                $shm_message = pack( 'S/A* S(S/A* S/A*)*', $curTimeStamp, scalar keys( %otree ), %otree );
-                utf8::downgrade($shm_message);
-                unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
-                semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
+                my $f_errno = &$func( \%otree, $func_config, \$mCall );
+                my $msg =  pack( 'S/A* S S(S/A* S/A*)*', $func, $mCall , scalar keys( %otree ), %otree );
+                utf8::downgrade($msg) || logMessage(LOG_ERR, "utf8::downgrade failed at " . __LINE__);
+                msgsnd( $mQueue, pack("l! a*", length($msg), $msg), 0) || logMessage(LOG_ERR, "msgsnd failed for $func, error: $!. msglen:" . length($msg) . ". check /proc/sys/kernel/msgmax" ); 
                 exit($f_errno);
               } or do {
                 logMessage(LOG_WARNING, "function $func terminated abnormally");
-                exit(2);
+                exit(242);
               };
             }
           } else {
-          eval {
-            if ( &$func( \%otree, $config_data->{'function'}->{$func} ) == 0 ) { 
-              $fStatus{$agentMib{functionsSuccessCount}} += 1;
-            } else {
+            eval {
+              if ( &$func( \%otree, $func_config, \$mCall ) == 0 ) { 
+                $fStatus{$agentMib{functionsSuccessCount}} += 1;
+              } else {
+                $fStatus{$agentMib{functionsFailedCount}} += 1;
+              } 
+            } or do { 
               $fStatus{$agentMib{functionsFailedCount}} += 1;
-            } 
-          } or do { 
-            $fStatus{$agentMib{functionsFailedCount}} += 1;
-            logMessage(LOG_WARNING, "function $func terminated abnormally");
-          };
-          $fStatus{$agentMib{functionsCount}} += 1;
+              logMessage(LOG_WARNING, "function $func terminated abnormally");
+            };
+            $fStatus{$agentMib{functionsCount}} += 1;
+            if ( $cTested == 0 && $fHash{$func} > 1 && $mCall != 0 ) {
+                logMessage(LOG_ERR, "function $func defined $fHash{$func} times but does not support multicall.") ; 
+                $cTestFailed = 1;
+            }
           }
         }
       }
+
       if ( defined($config->{'use_fork'}) && $config->{'use_fork'} eq 'yes' ) {
         for my $f ( keys %func_pid ){
+          local $SIG{ALRM} = sub { 
+                              kill 9, $func_pid{$f}; 
+                              logMessage(LOG_ERR, "function ${f}[$func_pid{$f}] timed out and killed ..."); 
+                            };
+          alarm $config->{'cmd_timeout'}+1;
           waitpid($func_pid{$f},0);
-          $fStatus{$agentMib{functionsCount}} += 1;
-          if ( $? == 0 ) {
+          alarm 0; 
+
+          my $f_errno = $?;
+          if ( $f_errno == 0 ) {
               $fStatus{$agentMib{functionsSuccessCount}} += 1;
           } else {
               $fStatus{$agentMib{functionsFailedCount}} += 1;
           }
+          $fStatus{$agentMib{functionsCount}} += 1;
+          if ( msgrcv( $mQueue, my $r_buf, $config->{'shm_size'}-1, 0, IPC_NOWAIT ) ) {
+            my($r_len, $msg) = unpack( "l! a*", $r_buf );
+            my ($func, $mCall, %r_otree ) =  unpack( 'S/A* S S/(S/A* S/A*)', $msg );
+            %otree = ( %otree, %r_otree );
+
+            if ( $cTested == 0 && $fHash{$func} > 1 && $mCall != 0 ) {
+                logMessage(LOG_ERR, "function $func defined $fHash{$func} times but does not support multicall.") ; 
+                $cTestFailed = 1;
+            }
+
+          }  else {
+            logMessage(LOG_ERR, "a function did not send any message to queue. see previous erros.")  if ( $f_errno != 242 );
+          }
         }
-        semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-        unless (shmread($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't read shared memory message "); }
-        ( $curTimeStamp, %otree )= unpack( 'S/A* S/(S/A* S/A*)', $shm_message );
-        semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
       }
   #   add pollerInfo
       pollerInfo(\%otree,\%fStatus,$s_time);
       $shm_message = pack( 'S/A* S(S/A* S/A*)*', (split /\(|\)/, $otree{$agentMib{timeStamp}})[1], scalar keys( %otree ), %otree );
 
-      eval {
-        utf8::downgrade($shm_message);
-        1;
-      } or do {
-        logMessage(LOG_ERR, "exception caught at utf8::downgrade call" . @$);
-      };
+      utf8::downgrade($shm_message, 1) || logMessage(LOG_ERR, "utf8::downgrade failed at " . __LINE__);
 
-      logMessage(LOG_ERR, "data size " . length($shm_message) ." is greater than configured shm_size " . $config->{'shm_size'} ) if length($shm_message) >= $config->{'shm_size'};
+      if ( length($shm_message) >= $config->{'shm_size'} ) {
+        logMessage(LOG_ERR, "data size " . length($shm_message) ." is greater than configured shm_size " . $config->{'shm_size'} );
+        $cTestFailed = 1 if $cTested == 0;
+      }
+
       if ( $opt->{verbose} >=1 ) {
         foreach my $k (sort keys %otree) { logMessage(LOG_DEBUG, "MIB from otree: $k => $otree{$k}" );}
       }
@@ -511,22 +577,26 @@ sub daemonize {
           logMessage(LOG_DEBUG, "OIDS from unpackOData: $o = $t , $v" );
         }
       }
+
+      if ( $cTested == 0 && ( $opt->{errors} >= 1 && $cTestFailed == 1 || $opt->{errors} >= 2 && $fStatus{$agentMib{functionsFailedCount}} > 0 ) ) {
+        logMessage(LOG_ERR, "configuration test failed due to previous errors. Aborting ..." ); 
+        exit(1) 
+      }
+
       semop($sem_id, pack("s!3", 0, 0, 0) . pack("s!3", 0, 1, 0) ); #lock
-      unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory"); }
+      unless(shmwrite($shm_id, $shm_message, 0, $config->{'shm_size'}-1)) { logMessage(LOG_ERR, "can't write to shared memory at " . __LINE__); }
       semop($sem_id, pack("s!3", 0, -1, 0) ); #unlock
 
       my ($rin, $rout)  = ('', '');
       vec($rin, fileno(STDIN), 1) = 1;
       my ($nfound, $timeleft) = select($rout=$rin, undef, undef, $config->{'poller_cycle'});
-      if ( $nfound == 1 ) {
+      if ( $nfound != 0 ) {
         logMessage(LOG_NOTICE, "Connection with AgentX lost, shutdown poller.");
-        shmctl($shm_id, IPC_RMID, 0);
-        semctl($sem_id, 0, IPC_RMID, 0);
-        closelog;
-        close LOGFILE if defined($opt->{log_file});
-        unlink $ENV{SNMP_PERSISTENT_FILE} if -f $ENV{SNMP_PERSISTENT_FILE};
+        cleanUp();
         exit 0; 
       }
+
+      $cTested = 1;
     }
   }
 }

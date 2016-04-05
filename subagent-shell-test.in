@@ -1,0 +1,129 @@
+#!/bin/sh
+#
+# a basic test for subagent-shell
+#
+
+T_DIR=`pwd`/stest
+P_DIR=`pwd`
+S_PORT=7777
+TEST_OK=0
+
+rm -rf $T_DIR
+mkdir -p $T_DIR/snmpd $T_DIR/subagent-shell
+echo "INFO: Test dir is $T_DIR"
+
+cleanup () {
+  [ -f  $T_DIR/subagent-shell/subagent-shell.pid ] && kill `cat $T_DIR/subagent-shell/subagent-shell.pid`
+  [ -f  $T_DIR/snmpd/snmpd.pid ] && kill `cat $T_DIR/snmpd/snmpd.pid`
+}
+trap cleanup EXIT
+
+log (){
+  echo $1 | tee -a $T_DIR/subagent-shell/subagent-shell-test.log
+}
+
+snmp_get () {
+  log "INFO: Requesting $1"
+  @SNMPWALK@ -v2c -M+$T_DIR/subagent-shell/mibs -m+$MIBS -c public localhost:$S_PORT $1 | tee -a $T_DIR/subagent-shell/subagent-shell
+  if [ $? -ne 0 ]; then
+    log "ERR: an error requesting $1 from local snmpd"
+    TEST_OK=1
+  fi
+}
+
+snmp_check_value () {
+  log "INFO: Requesting $1 and checking the result against $2"
+  r=`@SNMPWALK@ -v2c -M+$T_DIR/subagent-shell/mibs -m+$MIBS -c public -Ovq localhost:$S_PORT $1`
+  if [ $? -ne 0 ]; then
+    log "ERR: an error requesting $1"
+    TEST_OK=1
+  fi
+  if [ "$r" != "$2" ]; then
+    echo "ERR: $1 is $r and does not match expected $2" >&2
+    TEST_OK=1
+  fi
+}
+
+restart_subagent () {
+  [ -f  $T_DIR/subagent-shell/subagent-shell.pid ] && kill `cat $T_DIR/subagent-shell/subagent-shell.pid`
+  log "INFO: (re)Starting subagent-shell"
+  perl $P_DIR/subagent-shell -d -b $T_DIR/subagent-shell/ -l $T_DIR/subagent-shell/subagent-shell.log -p $T_DIR/subagent-shell/subagent-shell.pid --agentx-socket=$T_DIR/snmpd/agentX  
+  sleep 1
+}
+
+ln -s $P_DIR/subagent-shell-base.functions $T_DIR/subagent-shell/
+ln -s $P_DIR/mibs $T_DIR/subagent-shell/
+
+MIBS="SNMPv2-MIB:`ls $T_DIR/subagent-shell/mibs | awk -F'.txt' '/.txt/{a=a ":" $1}END{print a}'`"
+
+log "INFO: Generating snmpd/snmpd.conf"
+cat <<EOF >$T_DIR/snmpd/snmpd.conf
+com2sec         notConfigUser  default       public
+group           notConfigGroup v1            notConfigUser
+group           notConfigGroup v2c           notConfigUser
+access          notConfigGroup ""            any  noauth exact systemview none none
+
+view            systemview     included      .1
+master  agentx
+
+dontLogTCPWrappersConnects 1
+interface lo 24 1000000000
+
+EOF
+
+log "INFO: Starting local snmpd"
+export SNMP_PERSISTENT_DIR=$T_DIR/snmpd
+@SNMPD@ -Cc $T_DIR/snmpd/snmpd.conf -Lf $T_DIR/snmpd/snmpd.out -p $T_DIR/snmpd/snmpd.pid -I -smux -x $T_DIR/snmpd/agentX udp:$S_PORT
+
+snmp_get sysDescr
+
+log "INFO: Generating(no fork) subagent-shell/subagent-shell-conf.xml"
+cat <<EOF > $T_DIR/subagent-shell/subagent-shell-conf.xml
+<?xml version='1.0'?>
+<config poller_cycle="3"
+        stale_time="600"
+        cmd_timeout="7"
+        log_level="5"
+        shm_size="131072"
+        rootMIB="SUBAGENT-SHELL"
+        loadMibModules="defined"
+        functionsCount="ssFunctionsCount"
+        functionsSuccessCount="ssFunctionsSuccessCount"
+        functionsFailedCount="ssFunctionsFailedCount"
+        timeStamp="ssTimeStamp"
+        totalExecTime="ssTotalExecTime"
+        masterAgentPid="ssMasterAgentPid"
+        pollerPid="ssPollerPid"
+        use_fork="no"
+/>
+EOF
+
+log "INFO: Generating subagent-shell/subagent-shell-execCommand-conf.xml"
+cat <<EOF > $T_DIR/subagent-shell/subagent-shell-execCommand-conf.xml
+<config>
+<function id="execCommandMIB">
+  <args cmd="ls -alh $T_DIR" match="total (.*)$" description="total" monitoringTemplate="SubagentShellCommandStatus"/>
+  <args cmd="find $T_DIR" match="afile" description="looking for afile in subtree"/>
+</function>
+</config>
+EOF
+
+restart_subagent
+snmp_get SUBAGENT-SHELL
+snmp_check_value SUBAGENT-SHELL-MIB::ssFunctionsFailedCount 0
+
+sed -ie 's/use_fork="no"/use_fork="yes"/' $T_DIR/subagent-shell/subagent-shell-conf.xml
+log "INFO: Turning fork support on subagent-shell/subagent-shell-conf.xml"
+
+restart_subagent
+snmp_get SUBAGENT-SHELL
+snmp_check_value SUBAGENT-SHELL-MIB::ssFunctionsFailedCount 0
+snmp_check_value SUBAGENT-SHELL-MIB::ssFunctionsCount 2
+
+if [ $TEST_OK -eq 0 ]; then
+  log "INFO: Test passed"
+  exit 0
+else
+  log "ERR: Some tests failed, please examaine logs for details"
+  exit 1
+fi
