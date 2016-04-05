@@ -9,6 +9,9 @@
 <function id="vmstatMIB"/>
 <function id="ip_conntrackMIB"/>
 <!--
+<function id="asvMib">
+  <args oid=".1.3.6.1.2.1.25.1.6.0" community="public" hosts="127.0.0.{1,2,3,4,5}" />
+</function>
 <function id="diskStatsMIB">
   <args command="ssh localhost cat /proc/diskstats" match="sda\d+" />
 </function>

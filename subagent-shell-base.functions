@@ -1,3 +1,4 @@
+# vi:syntax=diff
 use strict;
 use warnings;
 use Sys::Syslog qw(:standard :macros);
@@ -346,51 +347,26 @@ sub dnsLookUpMIB {
   my $cmd="/usr/bin/host -W $config->{'cmd_timeout'}";
   my $i=1;
   my $r=0;
-  my @nameservers;
   my $t=gettimeofday();
 
   foreach my $a (@{$cfg->{'args'}}) {
-    my $srv='';
+    my $lookup_ips = '';
     my $ts=gettimeofday();
-    if ( ! $a->{'fqdn'}) {$a->{'fqdn'} = hostname};
-    
-    if (defined($a->{'servers'})) {
-      if ($a->{'servers'} =~/^\s*$/ ){  
-        #get nameservers
-        @nameservers = (); 
-        open (ERC, '/etc/resolv.conf');
-        while (<ERC>) {
-          chomp;
-          if (/nameserver (\S+)$/) {
-            push @nameservers,$1; 
-          }
-        }
-        close (ERC); 
-      } else {
-        @nameservers = split(/[,\s]*/,$a->{'servers'});
+    foreach (`$cmd $a->{'fqdn'}`) {
+      chomp;
+      my $s=$_;
+      if ( /has address/ ) {
+        $lookup_ips .=  (split / /,$s)[3] . ',';
       }
-    } 
-    #next 'foreach' will be done at least once for each fqdn
-    if ($#nameservers < 0) {push @nameservers, ' '};
-    foreach $srv (@nameservers) {
-      my $lookup_ips = '';
-      foreach (`$cmd $a->{'fqdn'} $srv`) {
-        chomp;
-        my $s=$_;
-        if ( /has address/ ) {
-          $lookup_ips .=  (split / /,$s)[3] . ',';
-        }
-      }
-      my $lookup_r = $? >> 8;
-      $$o{"dnsIndex.$i"} = $i;
-      $$o{"dnsNameLookUp.$i"} = $a->{'fqdn'}; $$o{"dnsNameLookUp.$i"} .= " at $srv" if ($srv =~ /\S/);
-      $$o{"dnsNameResolvedIp.$i"} = $lookup_ips;
-      $$o{"dnsLookUpExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
-      $$o{"dnsLookUpExecStatus.$i"} = $lookup_r;
-      $r = $lookup_r if $lookup_r;
-      $i++;
-      
     }
+    my $lookup_r = $? >> 8;
+    $$o{"dnsIndex.$i"} = $i;
+    $$o{"dnsNameLookUp.$i"} = $a->{'fqdn'};
+    $$o{"dnsNameResolvedIp.$i"} = $lookup_ips;
+    $$o{"dnsLookUpExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{"dnsLookUpExecStatus.$i"} = $lookup_r;
+    $r = $lookup_r if $lookup_r;
+    $i++;
   }
   $$o{'dnsLookUpFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'dnsLookUpFuncExecStatus'} = $r;
@@ -709,6 +685,73 @@ sub diskStatsMIB {
   $r = $? >> 8;
   $$o{'diskStatsCmdExecStatus'} = $r;
   $$o{'diskStatsCmdExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t );
+
+  return $r;
+
+}
+
+my $asvStats;
+
+sub asvMib {
+  use Net::SNMP;
+  my $t = gettimeofday();
+  my $o=shift;
+  my $cfg=shift;
+  my $i=0;
+  my $r=0;
+
+  foreach my $a ( @{$cfg->{'args'}} ) {
+    $i++;
+    my $oid = $a->{'oid'};
+    my @hosts = glob $a->{'hosts'};
+    my $min;
+    my $max;
+    my $sum=0;
+    my $host_num=0;
+
+    $$o{"asvEntryIndex.$i"} = $i;
+    $$o{"asvOid.$i"} = $oid;
+   
+    logMessage(LOG_DEBUG, "fetching data for $oid from @hosts");
+
+    foreach my $host (@hosts){
+      my $val;
+      my ($session, $error) = Net::SNMP->session( Hostname => $host,
+                                                  Community => $a->{'community'} || 'public',
+                                                  Version => "v2c",
+                                                  Timeout => $a->{'timeout'} || 1
+                                            );
+      my $result = $session->get_request(Varbindlist => [$oid]);
+      if (!defined $result) {
+        logMessage(LOG_WARNING, "Got no result from $host:".$session->error() );
+        $r=1;
+      } else {
+        $host_num++;
+        $val = $result->{$oid}; 
+        logMessage(LOG_DEBUG, "Got '$val' from $host");
+        my $difference = $val - ($asvStats->{$oid}->{$host} || 0) ;
+        if ($difference < 0) { $difference = $val; }
+        $min = defined $min && $min < $difference ? $min : $difference;
+        $max = defined $max && $max > $difference ? $max : $difference;
+        $sum = $sum + $difference;
+        $asvStats->{$oid}->{$host} = $val;
+        $$o{"asvHostIndex.$i.$host_num"} = $host_num;
+        $$o{"asvHostName.$i.$host_num"} = $host;
+        $$o{"asvHostValue.$i.$host_num"} = $val;
+        logMessage(LOG_DEBUG, "Difference with old is $difference");
+      }
+      $session->close();
+    }
+
+    $$o{"asvOidMin.$i"} = $min;
+    $$o{"asvOidMax.$i"} = $max;
+    $$o{"asvOidSum.$i"} = $sum;
+    $$o{"asvOidAvg.$i"} = $sum/$host_num;
+    undef $min, $max;
+
+  }
+  $$o{'asvCmdExecStatus'} = $r;
+  $$o{'asvCmdExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t );
 
   return $r;
 

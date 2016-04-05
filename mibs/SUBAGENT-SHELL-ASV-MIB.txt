@@ -1,0 +1,142 @@
+SUBAGENT-SHELL-ASV-MIB DEFINITIONS ::= BEGIN
+
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Counter64, Gauge32, Integer32 FROM SNMPv2-SMI
+  functionsEntry FROM SUBAGENT-SHELL-MIB
+  TimeStamp FROM SNMPv2-TC;
+
+SUBAGENT-SHELL-ASV MODULE-IDENTITY
+  LAST-UPDATED "201604051600Z"
+  ORGANIZATION "Example org"
+  CONTACT-INFO "iippolitov@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL AGGREGATE SNMP VALUES MIB"
+  ::= { functionsEntry 93 }
+
+  asvCmdExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-ASV 1 }
+
+  asvCmdExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-ASV 2 }
+  
+  asvTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF asvTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  ""
+    ::= { SUBAGENT-SHELL-ASV 3 }
+
+  asvTableEntry OBJECT-TYPE 
+    SYNTAX      asvTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current 
+    DESCRIPTION  "" 
+    INDEX      { asvEntryIndex }
+    ::= { asvTable 1 } 
+ 
+  asvTableEntry ::= 
+    SEQUENCE { 
+        asvEntryIndex   Integer32,
+	asvOid		OCTET STRING,
+	asvOidMin	OCTET STRING,
+	asvOidMax	OCTET STRING,
+	asvOidAvg	OCTET STRING,
+	asvOidSum	OCTET STRING,
+        asvOidTable	asvOidTableEntry
+    } 
+
+  asvEntryIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "INDEX of the table"
+    ::= { asvTableEntry 1 }
+
+  asvOid OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "An OID to aggregate"
+    ::= { asvTableEntry 2 }
+
+  asvOidMin OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The minimum value of all for this OID"
+    ::= { asvTableEntry 3 }
+
+  asvOidMax OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The maximum value of all for this OID"
+    ::= { asvTableEntry 4 }
+
+   asvOidAvg OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "An average value for this OID"
+    ::= { asvTableEntry 5 }
+
+   asvOidSum OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Sum for all values for this OID"
+    ::= { asvTableEntry 6 }
+ 
+  asvOidTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF asvOidTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  ""
+    ::= { asvTableEntry 7 }
+
+  asvOidTableEntry OBJECT-TYPE 
+    SYNTAX      asvOidTableEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current 
+    DESCRIPTION  "" 
+    INDEX      { asvHostIndex }
+    ::= { asvOidTable 1 } 
+
+  asvOidTableEntry ::=
+    SEQUENCE {
+        asvHostIndex                Integer32,
+        asvHostName                 OCTET STRING,
+        asvHostValue		OCTET STRING
+    }
+
+
+    asvHostIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each host"
+    ::= { asvOidTableEntry 1 }
+    
+    asvHostName OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Host name"
+    ::= { asvOidTableEntry 2 }    
+
+    asvHostValue    OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A value from a host"
+    ::= { asvOidTableEntry 3 }
+
+END
