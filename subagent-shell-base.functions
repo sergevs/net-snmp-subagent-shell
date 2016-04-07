@@ -721,7 +721,7 @@ sub asvMib {
                                                   Version => "v2c",
                                                   Timeout => $a->{'timeout'} || 1
                                             );
-      my $result = $session->get_request(Varbindlist => [$oid]);
+      my $result = $session->get_request(Varbindlist => [$oid]) if (defined $session);
       if (!defined $result) {
         logMessage(LOG_WARNING, "Got no result from $host:".$session->error() );
         $r=1;
@@ -729,12 +729,19 @@ sub asvMib {
         $host_num++;
         $val = $result->{$oid}; 
         logMessage(LOG_DEBUG, "Got '$val' from $host");
-        my $difference = $val - ($asvStats->{$oid}->{$host} || 0) ;
+
+        # difference is either the value itself or difference with previous value
+        my $difference = $val - ($asvStats->{$oid}[$i]->{$host} || 0) ;
+        # if $val is less than 0, this still works as intended
         if ($difference < 0) { $difference = $val; }
         $min = defined $min && $min < $difference ? $min : $difference;
         $max = defined $max && $max > $difference ? $max : $difference;
         $sum = $sum + $difference;
-        $asvStats->{$oid}->{$host} = $val;
+
+        # if the oid is marked as gauge don't calculate differences for it. 
+        # use difference only for 'derive' like things (as per rrd)
+        if (! (defined $a->{'gauge'} && $a->{'gauge'} == "true")) {$asvStats->{$oid}[$i]->{$host} = $val};
+
         $$o{"asvHostIndex.$i.$host_num"} = $host_num;
         $$o{"asvHostName.$i.$host_num"} = $host;
         $$o{"asvHostValue.$i.$host_num"} = $val;
@@ -747,7 +754,6 @@ sub asvMib {
     $$o{"asvOidMax.$i"} = $max;
     $$o{"asvOidSum.$i"} = $sum;
     $$o{"asvOidAvg.$i"} = $sum/$host_num;
-    undef $min, $max;
 
   }
   $$o{'asvCmdExecStatus'} = $r;
