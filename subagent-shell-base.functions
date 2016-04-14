@@ -347,26 +347,51 @@ sub dnsLookUpMIB {
   my $cmd="/usr/bin/host -W $config->{'cmd_timeout'}";
   my $i=1;
   my $r=0;
+  my @nameservers;
   my $t=gettimeofday();
 
   foreach my $a (@{$cfg->{'args'}}) {
-    my $lookup_ips = '';
+    my $srv='';
     my $ts=gettimeofday();
-    foreach (`$cmd $a->{'fqdn'}`) {
-      chomp;
-      my $s=$_;
-      if ( /has address/ ) {
-        $lookup_ips .=  (split / /,$s)[3] . ',';
+    if ( ! $a->{'fqdn'}) {$a->{'fqdn'} = hostname};
+    
+    if (defined($a->{'servers'})) {
+      if ($a->{'servers'} =~/^\s*$/ ){  
+        #get nameservers
+        @nameservers = (); 
+        open (ERC, '/etc/resolv.conf');
+        while (<ERC>) {
+          chomp;
+          if (/nameserver (\S+)$/) {
+            push @nameservers,$1; 
+          }
+        }
+        close (ERC); 
+      } else {
+        @nameservers = split(/[,\s]*/,$a->{'servers'});
       }
+    } 
+    #next 'foreach' will be done at least once for each fqdn
+    if ($#nameservers < 0) {push @nameservers, ' '};
+    foreach $srv (@nameservers) {
+      my $lookup_ips = '';
+      foreach (`$cmd $a->{'fqdn'} $srv`) {
+        chomp;
+        my $s=$_;
+        if ( /has address/ ) {
+          $lookup_ips .=  (split / /,$s)[3] . ',';
+        }
+      }
+      my $lookup_r = $? >> 8;
+      $$o{"dnsIndex.$i"} = $i;
+      $$o{"dnsNameLookUp.$i"} = $a->{'fqdn'}; $$o{"dnsNameLookUp.$i"} .= " at $srv" if ($srv =~ /\S/);
+      $$o{"dnsNameResolvedIp.$i"} = $lookup_ips;
+      $$o{"dnsLookUpExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+      $$o{"dnsLookUpExecStatus.$i"} = $lookup_r;
+      $r = $lookup_r if $lookup_r;
+      $i++;
+      
     }
-    my $lookup_r = $? >> 8;
-    $$o{"dnsIndex.$i"} = $i;
-    $$o{"dnsNameLookUp.$i"} = $a->{'fqdn'};
-    $$o{"dnsNameResolvedIp.$i"} = $lookup_ips;
-    $$o{"dnsLookUpExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
-    $$o{"dnsLookUpExecStatus.$i"} = $lookup_r;
-    $r = $lookup_r if $lookup_r;
-    $i++;
   }
   $$o{'dnsLookUpFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'dnsLookUpFuncExecStatus'} = $r;
