@@ -1,3 +1,4 @@
+# vi:syntax=diff
 use strict;
 use warnings;
 use Sys::Syslog qw(:standard :macros);
@@ -684,6 +685,79 @@ sub diskStatsMIB {
   $r = $? >> 8;
   $$o{'diskStatsCmdExecStatus'} = $r;
   $$o{'diskStatsCmdExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t );
+
+  return $r;
+
+}
+
+my $asvStats;
+
+sub asvMib {
+  use Net::SNMP;
+  my $t = gettimeofday();
+  my $o=shift;
+  my $cfg=shift;
+  my $i=0;
+  my $r=0;
+
+  foreach my $a ( @{$cfg->{'args'}} ) {
+    $i++;
+    my $oid = $a->{'oid'};
+    my @hosts = glob $a->{'hosts'};
+    my $min;
+    my $max;
+    my $sum=0;
+    my $host_num=0;
+
+    $$o{"asvEntryIndex.$i"} = $i;
+    $$o{"asvOid.$i"} = $oid;
+   
+    logMessage(LOG_DEBUG, "fetching data for $oid from @hosts");
+
+    foreach my $host (@hosts){
+      my $val;
+      my ($session, $error) = Net::SNMP->session( Hostname => $host,
+                                                  Community => $a->{'community'} || 'public',
+                                                  Version => "v2c",
+                                                  Timeout => $a->{'timeout'} || 1
+                                            );
+      my $result = $session->get_request(Varbindlist => [$oid]) if (defined $session);
+      if (!defined $result) {
+        logMessage(LOG_WARNING, "Got no result from $host:".$session->error() );
+        $r=1;
+      } else {
+        $host_num++;
+        $val = $result->{$oid}; 
+        logMessage(LOG_DEBUG, "Got '$val' from $host");
+
+        # difference is either the value itself or difference with previous value
+        my $difference = $val - ($asvStats->{$oid}[$i]->{$host} || 0) ;
+        # if $val is less than 0, this still works as intended
+        if ($difference < 0) { $difference = $val; }
+        $min = defined $min && $min < $difference ? $min : $difference;
+        $max = defined $max && $max > $difference ? $max : $difference;
+        $sum = $sum + $difference;
+
+        # if the oid is marked as gauge don't calculate differences for it. 
+        # use difference only for 'derive' like things (as per rrd)
+        if (! (defined $a->{'gauge'} && $a->{'gauge'} == "true")) {$asvStats->{$oid}[$i]->{$host} = $val};
+
+        $$o{"asvHostIndex.$i.$host_num"} = $host_num;
+        $$o{"asvHostName.$i.$host_num"} = $host;
+        $$o{"asvHostValue.$i.$host_num"} = $val;
+        logMessage(LOG_DEBUG, "Difference with old is $difference");
+      }
+      $session->close();
+    }
+
+    $$o{"asvOidMin.$i"} = $min;
+    $$o{"asvOidMax.$i"} = $max;
+    $$o{"asvOidSum.$i"} = $sum;
+    $$o{"asvOidAvg.$i"} = $sum/$host_num;
+
+  }
+  $$o{'asvCmdExecStatus'} = $r;
+  $$o{'asvCmdExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t );
 
   return $r;
 
