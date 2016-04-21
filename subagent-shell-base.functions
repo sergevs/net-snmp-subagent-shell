@@ -718,7 +718,25 @@ sub diskStatsMIB {
 my $asvStats;
 
 sub asvMib {
-  use Net::SNMP;
+  sub getnum {
+      use POSIX qw(strtod);
+      my $str = shift;
+      $str =~ s/^\s+//;
+      $str =~ s/\s+$//;
+      $! = 0;
+      my($num, $unparsed) = strtod($str);
+      if (($str eq '') || ($unparsed != 0) || $!) {
+              return undef;
+      } else {
+          return $num;
+      }
+  }
+  sub numeric {
+    my $check = shift;
+    return undef if ( ! defined($check));
+    return defined getnum($check)? $check : undef
+  }
+
   my $t = gettimeofday();
   my $o=shift;
   my $cfg=shift;
@@ -727,7 +745,8 @@ sub asvMib {
 
   foreach my $a ( @{$cfg->{'args'}} ) {
     $i++;
-    my $oid = $a->{'oid'};
+    my $oid  = $a->{'oid'};
+    my $oids = new SNMP::VarList([$oid]);
     my @hosts = glob $a->{'hosts'};
     my $min;
     my $max;
@@ -740,19 +759,20 @@ sub asvMib {
     logMessage(LOG_DEBUG, "fetching data for $oid from @hosts");
 
     foreach my $host (@hosts){
+      $host_num++;
       my $val;
-      my ($session, $error) = Net::SNMP->session( Hostname => $host,
+      my $session = new SNMP::Session( DestHost => $host,
                                                   Community => $a->{'community'} || 'public',
-                                                  Version => "v2c",
-                                                  Timeout => $a->{'timeout'} || 1
+                                                  Version => "2",
+                                                  Timeout => int($a->{'timeout'}||1)*1000000,
+                                                  UseLongNames => 1 # https://gist.github.com/pmorch/1293702
                                             );
-      my $result = $session->get_request(Varbindlist => [$oid]) if (defined $session);
-      if (!defined $result) {
-        logMessage(LOG_WARNING, "Got no result from $host:".$session->error() );
+      my @result = $session->get($oids);
+      $val = numeric(@result[0]) ; # the value or undef, in case of any error previously 
+      if ( ! defined $val) {
+        logMessage(LOG_WARNING, "Got no result from $host");
         $r=1;
       } else {
-        $host_num++;
-        $val = $result->{$oid}; 
         logMessage(LOG_DEBUG, "Got '$val' from $host");
 
         # difference is either the value itself or difference with previous value
@@ -772,7 +792,6 @@ sub asvMib {
         $$o{"asvHostValue.$i.$host_num"} = $val;
         logMessage(LOG_DEBUG, "Difference with old is $difference");
       }
-      $session->close();
     }
 
     $$o{"asvOidMin.$i"} = $min;
