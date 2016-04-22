@@ -768,7 +768,7 @@ sub asvMib {
                                                   UseLongNames => 1 # https://gist.github.com/pmorch/1293702
                                             );
       my @result = $session->get($oids);
-      $val = numeric(@result[0]) ; # the value or undef, in case of any error previously 
+      $val = numeric($result[0]) ; # the value or undef, in case of any error previously 
       if ( ! defined $val) {
         logMessage(LOG_WARNING, "Got no result from $host");
         $r=1;
