@@ -1,4 +1,4 @@
-# vi:syntax=diff
+# vi:syntax=perl
 use strict;
 use warnings;
 use Sys::Syslog qw(:standard :macros);
@@ -716,20 +716,21 @@ sub diskStatsMIB {
 }
 
 my $asvStats;
+my $asvFirstRun;
 
 sub asvMib {
   sub getnum {
-      use POSIX qw(strtod);
-      my $str = shift;
-      $str =~ s/^\s+//;
-      $str =~ s/\s+$//;
-      $! = 0;
-      my($num, $unparsed) = strtod($str);
-      if (($str eq '') || ($unparsed != 0) || $!) {
-              return undef;
-      } else {
-          return $num;
-      }
+    use POSIX qw(strtod);
+    my $str = shift;
+    $str =~ s/^\s+//;
+    $str =~ s/\s+$//;
+    $! = 0;
+    my($num, $unparsed) = strtod($str);
+    if (($str eq '') || ($unparsed != 0) || $!) {
+      return undef;
+    } else {
+      return $num;
+    }
   }
   sub numeric {
     my $check = shift;
@@ -745,47 +746,63 @@ sub asvMib {
 
   foreach my $a ( @{$cfg->{'args'}} ) {
     $i++;
-    my $oid  = $a->{'oid'};
-    my $oids = new SNMP::VarList([$oid]);
+    my $cmd = $a->{'cmd'};
+    #next unless defined($cmd);
+
+    my $re = $a->{'re'} || '\{\}';
     my @hosts = glob $a->{'hosts'};
     my $min;
     my $max;
-    my $sum=0;
+    my $sum;
     my $host_num=0;
+    $sum=0;
 
     $$o{"asvEntryIndex.$i"} = $i;
-    $$o{"asvOid.$i"} = $oid;
+    $$o{"asvCmd.$i"} = $cmd;
    
-    logMessage(LOG_DEBUG, "fetching data for $oid from @hosts");
+    logMessage(LOG_DEBUG, "fetching data for '$cmd' from @hosts");
 
     foreach my $host (@hosts){
       $host_num++;
       my $val;
-      my $session = new SNMP::Session( DestHost => $host,
-                                                  Community => $a->{'community'} || 'public',
-                                                  Version => "2",
-                                                  Timeout => int($a->{'timeout'}||1)*1000000,
-                                                  UseLongNames => 1 # https://gist.github.com/pmorch/1293702
-                                            );
-      my @result = $session->get($oids);
-      $val = numeric($result[0]) ; # the value or undef, in case of any error previously 
+      my $current_cmd = $cmd;
+      $current_cmd =~ s/$re/$host/g;
+      my $output = `$current_cmd`;
+      if( $output =~ /"?([0-9.]+)"?$/ ) {
+        $val = numeric($1) ; 
+      } else {
+        undef $val;
+      }
       if ( ! defined $val) {
         logMessage(LOG_WARNING, "Got no result from $host");
+        undef $asvStats->{$cmd}[$i]->{$host};
         $r=1;
       } else {
-        logMessage(LOG_DEBUG, "Got '$val' from $host");
+        logMessage(LOG_NOTICE, "Got '$val' from $host");
 
+        my $oldVal = 0;
+        if (! (defined $a->{'gauge'} && $a->{'gauge'} =~ /^true$/)) {
+          if (! defined $asvStats->{$cmd}[$i]->{$host}) {
+            logMessage(LOG_NOTICE, "Old value for $host is undefined");
+          }
+          $oldVal = $asvStats->{$cmd}[$i]->{$host} || $val;
+        }
         # difference is either the value itself or difference with previous value
-        my $difference = $val - ($asvStats->{$oid}[$i]->{$host} || 0) ;
-        # if $val is less than 0, this still works as intended
+        # if oldVal is undefined (a gauge) $val is unchanged
+        my $difference = $val - $oldVal;
+        # if old value was big and the current is small - there was at least $val events
+        # if $val is less than 0, this still works as intended (e.g. if gauge)
         if ($difference < 0) { $difference = $val; }
         $min = defined $min && $min < $difference ? $min : $difference;
         $max = defined $max && $max > $difference ? $max : $difference;
         $sum = $sum + $difference;
 
-        # if the oid is marked as gauge don't calculate differences for it. 
+        # if the cmd is marked as gauge don't calculate differences for it. 
         # use difference only for 'derive' like things (as per rrd)
-        if (! (defined $a->{'gauge'} && $a->{'gauge'} == "true")) {$asvStats->{$oid}[$i]->{$host} = $val};
+        if (! (defined $a->{'gauge'} && $a->{'gauge'} =~ /^true$/)) {
+          logMessage(LOG_DEBUG, "not a gauge value");
+          $asvStats->{$cmd}[$i]->{$host} = $val
+        };
 
         $$o{"asvHostIndex.$i.$host_num"} = $host_num;
         $$o{"asvHostName.$i.$host_num"} = $host;
@@ -793,13 +810,18 @@ sub asvMib {
         logMessage(LOG_DEBUG, "Difference with old is $difference");
       }
     }
-
-    $$o{"asvOidMin.$i"} = $min;
-    $$o{"asvOidMax.$i"} = $max;
-    $$o{"asvOidSum.$i"} = $sum;
-    $$o{"asvOidAvg.$i"} = $sum/$host_num;
-
+    if (! defined($asvFirstRun->{$cmd})) {
+      logMessage(LOG_DEBUG, "first run for '$cmd'");
+      $asvFirstRun->{$cmd} = 0;
+    } else {
+      $sum /= $config->{'poller_cycle'};
+      $$o{"asvCmdMin.$i"} = $min;
+      $$o{"asvCmdMax.$i"} = $max;
+      $$o{"asvCmdSum.$i"} = $sum;
+      $$o{"asvCmdAvg.$i"} = $sum/$host_num;
+    }
   }
+
   $$o{'asvCmdExecStatus'} = $r;
   $$o{'asvCmdExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t );
 

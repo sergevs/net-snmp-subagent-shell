@@ -45,12 +45,12 @@ SUBAGENT-SHELL-ASV MODULE-IDENTITY
   asvTableEntry ::= 
     SEQUENCE { 
         asvEntryIndex   Integer32,
-	asvOid		OCTET STRING,
-	asvOidMin	OCTET STRING,
-	asvOidMax	OCTET STRING,
-	asvOidAvg	OCTET STRING,
-	asvOidSum	OCTET STRING,
-        asvOidTable	asvOidTableEntry
+	asvCmd		OCTET STRING,
+	asvCmdMin	OCTET STRING,
+	asvCmdMax	OCTET STRING,
+	asvCmdAvg	OCTET STRING,
+	asvCmdSum	OCTET STRING,
+        asvCmdTable	asvCmdTableEntry
     } 
 
   asvEntryIndex OBJECT-TYPE
@@ -60,61 +60,61 @@ SUBAGENT-SHELL-ASV MODULE-IDENTITY
     DESCRIPTION "INDEX of the table"
     ::= { asvTableEntry 1 }
 
-  asvOid OBJECT-TYPE
+  asvCmd OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
-    DESCRIPTION "An OID to aggregate"
+    DESCRIPTION "A command to aggregate output"
     ::= { asvTableEntry 2 }
 
-  asvOidMin OBJECT-TYPE
+  asvCmdMin OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "The minimum value of all for this OID"
     ::= { asvTableEntry 3 }
 
-  asvOidMax OBJECT-TYPE
+  asvCmdMax OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "The maximum value of all for this OID"
     ::= { asvTableEntry 4 }
 
-   asvOidAvg OBJECT-TYPE
+   asvCmdAvg OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "An average value for this OID"
     ::= { asvTableEntry 5 }
 
-   asvOidSum OBJECT-TYPE
+   asvCmdSum OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "Sum for all values for this OID"
     ::= { asvTableEntry 6 }
- 
-  asvOidTable OBJECT-TYPE
-    SYNTAX      SEQUENCE OF asvOidTableEntry
+
+  asvCmdTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF asvCmdTableEntry
     MAX-ACCESS  not-accessible
     STATUS      current
     DESCRIPTION  ""
     ::= { asvTableEntry 7 }
 
-  asvOidTableEntry OBJECT-TYPE 
-    SYNTAX      asvOidTableEntry
+  asvCmdTableEntry OBJECT-TYPE
+    SYNTAX      asvCmdTableEntry
     MAX-ACCESS  not-accessible
-    STATUS      current 
-    DESCRIPTION  "" 
+    STATUS      current
+    DESCRIPTION  ""
     INDEX      { asvHostIndex }
-    ::= { asvOidTable 1 } 
+    ::= { asvCmdTable 1 }
 
-  asvOidTableEntry ::=
+  asvCmdTableEntry ::=
     SEQUENCE {
-        asvHostIndex                Integer32,
-        asvHostName                 OCTET STRING,
-        asvHostValue		OCTET STRING
+        asvHostIndex        Integer32,
+        asvHostName         OCTET STRING,
+        asvHostValue        OCTET STRING
     }
 
 
@@ -123,20 +123,20 @@ SUBAGENT-SHELL-ASV MODULE-IDENTITY
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "A unique value, greater than zero, for each host"
-    ::= { asvOidTableEntry 1 }
-    
+    ::= { asvCmdTableEntry 1 }
+
     asvHostName OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "Host name"
-    ::= { asvOidTableEntry 2 }    
+    ::= { asvCmdTableEntry 2 }
 
     asvHostValue    OBJECT-TYPE
     SYNTAX      OCTET STRING
     MAX-ACCESS  read-only
     STATUS      current
     DESCRIPTION "A value from a host"
-    ::= { asvOidTableEntry 3 }
+    ::= { asvCmdTableEntry 3 }
 
 END
