@@ -39,5 +39,8 @@
   <args stat_file="/var/named/data/named_stats.txt"/>
 </function>
 <function id="mailqMIB"/>
+<function id="nginxStatusMIB">
+  <args status_url="localhost/server-status?auto" description="standard status"/>
+</function>
 -->
 </config>

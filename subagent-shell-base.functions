@@ -829,4 +829,49 @@ sub asvMib {
 
 }
 
+sub nginxStatusMIB {
+  my $o=shift;
+  my $cfg=shift;
+  my $mcall=shift;
+  my $i=$$mcall;
+  $$mcall=0; # the function support multicall
+
+  my $cmd="curl -s -m $config->{'cmd_timeout'} ";
+  my $r=0;
+  my $t=gettimeofday();
+
+  foreach my $a (@{$cfg->{'args'}}) {
+    my $ts=gettimeofday();
+    foreach (`$cmd $a->{'status_url'}`) {
+      chomp;
+      if ( /^Active connections/ ) {
+        $$o{"nginxActiveConnections.$i"} = ( split /: / )[1];
+      } elsif ( /\d+\s+\d+\s+\d+/ ) {
+        s/^\s+//;
+        my @d = split;
+        $$o{"nginxAccepts.$i"}  = $d[0]; 
+        $$o{"nginxHandled.$i"}  = $d[1]; 
+        $$o{"nginxRequests.$i"} = $d[2]; 
+      } elsif ( /^Reading/ ) {
+        my @d = split;
+        $$o{"nginxReading.$i"} = $d[1]; 
+        $$o{"nginxWriting.$i"} = $d[3]; 
+        $$o{"nginxWaiting.$i"} = $d[5]; 
+      }
+    }
+
+    my $cmd_r = $? >> 8;
+    while ( defined($$o{"nginxIndex.$i"}) ) { $i++; } # detect if the function called previously and increase the index 
+    $$o{"nginxIndex.$i"} = $i;
+    $$o{"nginxCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{"nginxCmdExecStatus.$i"} = $cmd_r;
+    $$o{"nginxUrl.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'status_url'}]";
+    $r = $cmd_r if $cmd_r;
+    $i++;
+  }
+  $$o{'nginxFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'nginxFuncExecStatus'} = $r;
+  return  $r;
+}
+
 return 1;

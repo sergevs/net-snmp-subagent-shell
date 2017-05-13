@@ -1,0 +1,136 @@
+SUBAGENT-SHELL-NGINX-STATUS-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Counter64, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-NGINX-STATUS MODULE-IDENTITY
+  LAST-UPDATED "200906251500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "abrikus@gmail.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL nginx status MIB"
+  ::= { functionsEntry 15 }
+
+  nginxStatusTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF nginxStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of nginx status ."
+    ::= { SUBAGENT-SHELL-NGINX-STATUS 1 }
+
+  nginxStatusEntry OBJECT-TYPE 
+    SYNTAX      nginxStatusEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current 
+    DESCRIPTION  "An entry containing management information applicable to nginx server status" 
+    INDEX      { nginxIndex }
+    ::= { nginxStatusTable 1 } 
+ 
+  nginxStatusEntry ::= 
+    SEQUENCE { 
+        nginxIndex                   Integer32, 
+        nginxActiveConnections       Gauge32,
+        nginxAccepts                 Counter64,
+        nginxHandled                 Counter64,
+        nginxRequests                Counter64,
+        nginxReading                 Gauge32,
+        nginxWriting                 Gauge32,
+        nginxWaiting                 Gauge32
+        nginxCmdExecTime               OCTET STRING,              
+        nginxCmdExecStatus             Integer32,
+        nginxUrl                       OCTET STRING
+    } 
+
+  nginxIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each nginx status."
+    ::= { nginxStatusEntry 1 }
+
+  nginxActiveConnections OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The current number of active client connections including Waiting connections."
+    ::= { nginxStatusEntry 2 }
+
+  nginxAccepts OBJECT-TYPE
+    SYNTAX      Counter64 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The total number of accepted client connections."
+    ::= { nginxStatusEntry 3 }
+
+  nginxHandled OBJECT-TYPE
+    SYNTAX      Counter64 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The total number of handled connections. Generally, the parameter value is the same as accepts unless some resource limits have been reached."
+    ::= { nginxStatusEntry 4 }
+
+  nginxRequests OBJECT-TYPE
+    SYNTAX      Counter64 
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The total number of client requests."
+    ::= { nginxStatusEntry 5 }
+
+  nginxReading OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The current number of connections where nginx is reading the request header."
+    ::= { nginxStatusEntry 6 }
+
+  nginxWriting OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The current number of connections where nginx is writing the response back to the client."
+    ::= { nginxStatusEntry 7 }
+
+  nginxWaiting OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "The current number of idle client connections waiting for a request."
+    ::= { nginxStatusEntry 8 }
+
+  nginxCmdExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { nginxStatusEntry 9 }
+
+  nginxCmdExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { nginxStatusEntry 10 }
+
+  nginxUrl OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Status url."
+    ::= { nginxStatusEntry 11 }
+
+  nginxFuncExecTime OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Function execution time."
+    ::= { SUBAGENT-SHELL-NGINX-STATUS 2 }
+
+  nginxFuncExecStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "Exec code."
+    ::= { SUBAGENT-SHELL-NGINX-STATUS 3 }
+
+END
