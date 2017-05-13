@@ -1,3 +1,4 @@
+# vi:syntax=perl
 use strict;
 use warnings;
 use Sys::Syslog qw(:standard :macros);
@@ -346,26 +347,51 @@ sub dnsLookUpMIB {
   my $cmd="/usr/bin/host -W $config->{'cmd_timeout'}";
   my $i=1;
   my $r=0;
+  my @nameservers;
   my $t=gettimeofday();
 
   foreach my $a (@{$cfg->{'args'}}) {
-    my $lookup_ips = '';
+    my $srv='';
     my $ts=gettimeofday();
-    foreach (`$cmd $a->{'fqdn'}`) {
-      chomp;
-      my $s=$_;
-      if ( /has address/ ) {
-        $lookup_ips .=  (split / /,$s)[3] . ',';
+    if ( ! $a->{'fqdn'}) {$a->{'fqdn'} = hostname};
+    
+    if (defined($a->{'servers'})) {
+      if ($a->{'servers'} =~/^\s*$/ ){  
+        #get nameservers
+        @nameservers = (); 
+        open (ERC, '/etc/resolv.conf');
+        while (<ERC>) {
+          chomp;
+          if (/nameserver (\S+)$/) {
+            push @nameservers,$1; 
+          }
+        }
+        close (ERC); 
+      } else {
+        @nameservers = split(/[,\s]*/,$a->{'servers'});
       }
+    } 
+    #next 'foreach' will be done at least once for each fqdn
+    if ($#nameservers < 0) {push @nameservers, ' '};
+    foreach $srv (@nameservers) {
+      my $lookup_ips = '';
+      foreach (`$cmd $a->{'fqdn'} $srv`) {
+        chomp;
+        my $s=$_;
+        if ( /has address/ ) {
+          $lookup_ips .=  (split / /,$s)[3] . ',';
+        }
+      }
+      my $lookup_r = $? >> 8;
+      $$o{"dnsIndex.$i"} = $i;
+      $$o{"dnsNameLookUp.$i"} = $a->{'fqdn'}; $$o{"dnsNameLookUp.$i"} .= " at $srv" if ($srv =~ /\S/);
+      $$o{"dnsNameResolvedIp.$i"} = $lookup_ips;
+      $$o{"dnsLookUpExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+      $$o{"dnsLookUpExecStatus.$i"} = $lookup_r;
+      $r = $lookup_r if $lookup_r;
+      $i++;
+      
     }
-    my $lookup_r = $? >> 8;
-    $$o{"dnsIndex.$i"} = $i;
-    $$o{"dnsNameLookUp.$i"} = $a->{'fqdn'};
-    $$o{"dnsNameResolvedIp.$i"} = $lookup_ips;
-    $$o{"dnsLookUpExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
-    $$o{"dnsLookUpExecStatus.$i"} = $lookup_r;
-    $r = $lookup_r if $lookup_r;
-    $i++;
   }
   $$o{'dnsLookUpFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
   $$o{'dnsLookUpFuncExecStatus'} = $r;
@@ -687,6 +713,165 @@ sub diskStatsMIB {
 
   return $r;
 
+}
+
+my $asvStats;
+my $asvFirstRun;
+
+sub asvMib {
+  sub getnum {
+    use POSIX qw(strtod);
+    my $str = shift;
+    $str =~ s/^\s+//;
+    $str =~ s/\s+$//;
+    $! = 0;
+    my($num, $unparsed) = strtod($str);
+    if (($str eq '') || ($unparsed != 0) || $!) {
+      return undef;
+    } else {
+      return $num;
+    }
+  }
+  sub numeric {
+    my $check = shift;
+    return undef if ( ! defined($check));
+    return defined getnum($check)? $check : undef
+  }
+
+  my $t = gettimeofday();
+  my $o=shift;
+  my $cfg=shift;
+  my $i=0;
+  my $r=0;
+
+  foreach my $a ( @{$cfg->{'args'}} ) {
+    $i++;
+    my $cmd = $a->{'cmd'};
+    #next unless defined($cmd);
+
+    my $re = $a->{'re'} || '\{\}';
+    my @hosts = glob $a->{'hosts'};
+    my $min;
+    my $max;
+    my $sum;
+    my $host_num=0;
+    $sum=0;
+
+    $$o{"asvEntryIndex.$i"} = $i;
+    $$o{"asvCmd.$i"} = $cmd;
+   
+    logMessage(LOG_DEBUG, "fetching data for '$cmd' from @hosts");
+
+    foreach my $host (@hosts){
+      $host_num++;
+      my $val;
+      my $current_cmd = $cmd;
+      $current_cmd =~ s/$re/$host/g;
+      my $output = `$current_cmd`;
+      if( $output =~ /"?([0-9.]+)"?$/ ) {
+        $val = numeric($1) ; 
+      } else {
+        undef $val;
+      }
+      if ( ! defined $val) {
+        logMessage(LOG_WARNING, "Got no result from $host");
+        undef $asvStats->{$cmd}[$i]->{$host};
+        $r=1;
+      } else {
+        logMessage(LOG_NOTICE, "Got '$val' from $host");
+
+        my $oldVal = 0;
+        if (! (defined $a->{'gauge'} && $a->{'gauge'} =~ /^true$/)) {
+          if (! defined $asvStats->{$cmd}[$i]->{$host}) {
+            logMessage(LOG_NOTICE, "Old value for $host is undefined");
+          }
+          $oldVal = $asvStats->{$cmd}[$i]->{$host} || $val;
+        }
+        # difference is either the value itself or difference with previous value
+        # if oldVal is undefined (a gauge) $val is unchanged
+        my $difference = $val - $oldVal;
+        # if old value was big and the current is small - there was at least $val events
+        # if $val is less than 0, this still works as intended (e.g. if gauge)
+        if ($difference < 0) { $difference = $val; }
+        $min = defined $min && $min < $difference ? $min : $difference;
+        $max = defined $max && $max > $difference ? $max : $difference;
+        $sum = $sum + $difference;
+
+        # if the cmd is marked as gauge don't calculate differences for it. 
+        # use difference only for 'derive' like things (as per rrd)
+        if (! (defined $a->{'gauge'} && $a->{'gauge'} =~ /^true$/)) {
+          logMessage(LOG_DEBUG, "not a gauge value");
+          $asvStats->{$cmd}[$i]->{$host} = $val
+        };
+
+        $$o{"asvHostIndex.$i.$host_num"} = $host_num;
+        $$o{"asvHostName.$i.$host_num"} = $host;
+        $$o{"asvHostValue.$i.$host_num"} = $val;
+        logMessage(LOG_DEBUG, "Difference with old is $difference");
+      }
+    }
+    if (! defined($asvFirstRun->{$cmd})) {
+      logMessage(LOG_DEBUG, "first run for '$cmd'");
+      $asvFirstRun->{$cmd} = 0;
+    } else {
+      $sum /= $config->{'poller_cycle'};
+      $$o{"asvCmdMin.$i"} = $min;
+      $$o{"asvCmdMax.$i"} = $max;
+      $$o{"asvCmdSum.$i"} = $sum;
+      $$o{"asvCmdAvg.$i"} = $sum/$host_num;
+    }
+  }
+
+  $$o{'asvCmdExecStatus'} = $r;
+  $$o{'asvCmdExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t );
+
+  return $r;
+
+}
+
+sub nginxStatusMIB {
+  my $o=shift;
+  my $cfg=shift;
+  my $mcall=shift;
+  my $i=$$mcall;
+  $$mcall=0; # the function support multicall
+
+  my $cmd="curl -s -m $config->{'cmd_timeout'} ";
+  my $r=0;
+  my $t=gettimeofday();
+
+  foreach my $a (@{$cfg->{'args'}}) {
+    my $ts=gettimeofday();
+    foreach (`$cmd $a->{'status_url'}`) {
+      chomp;
+      if ( /^Active connections/ ) {
+        $$o{"nginxActiveConnections.$i"} = ( split /: / )[1];
+      } elsif ( /\d+\s+\d+\s+\d+/ ) {
+        s/^\s+//;
+        my @d = split;
+        $$o{"nginxAccepts.$i"}  = $d[0]; 
+        $$o{"nginxHandled.$i"}  = $d[1]; 
+        $$o{"nginxRequests.$i"} = $d[2]; 
+      } elsif ( /^Reading/ ) {
+        my @d = split;
+        $$o{"nginxReading.$i"} = $d[1]; 
+        $$o{"nginxWriting.$i"} = $d[3]; 
+        $$o{"nginxWaiting.$i"} = $d[5]; 
+      }
+    }
+
+    my $cmd_r = $? >> 8;
+    while ( defined($$o{"nginxIndex.$i"}) ) { $i++; } # detect if the function called previously and increase the index 
+    $$o{"nginxIndex.$i"} = $i;
+    $$o{"nginxCmdExecTime.$i"} = sprintf('%.3f',scalar gettimeofday() - $ts);
+    $$o{"nginxCmdExecStatus.$i"} = $cmd_r;
+    $$o{"nginxUrl.$i"} = (defined($a->{'description'})?$a->{'description'}:'') . "[$a->{'status_url'}]";
+    $r = $cmd_r if $cmd_r;
+    $i++;
+  }
+  $$o{'nginxFuncExecTime'} = sprintf('%.3f',scalar gettimeofday() - $t);
+  $$o{'nginxFuncExecStatus'} = $r;
+  return  $r;
 }
 
 return 1;

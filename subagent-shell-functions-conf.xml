@@ -9,6 +9,9 @@
 <function id="vmstatMIB"/>
 <function id="ip_conntrackMIB"/>
 <!--
+<function id="asvMib">
+  <args cmd="curl &#x002d;-connect-timeout 1 -s {}:10181/status | awk '/^[0-9 ]*$/ {print $3}'" hosts="host{1,3,4,5}" />
+</function>
 <function id="diskStatsMIB">
   <args command="ssh localhost cat /proc/diskstats" match="sda\d+" />
 </function>
@@ -36,5 +39,8 @@
   <args stat_file="/var/named/data/named_stats.txt"/>
 </function>
 <function id="mailqMIB"/>
+<function id="nginxStatusMIB">
+  <args status_url="localhost/server-status?auto" description="standard status"/>
+</function>
 -->
 </config>
