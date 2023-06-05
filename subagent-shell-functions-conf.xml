@@ -1,13 +1,14 @@
 <?xml version='1.0'?>
 <config>
-<function id="ntpSyncMIB">
+<!--<function id="ntpSyncMIB">
   <args server="ntp"/>
 </function>
-<function id="procCountMIB"/>
+<function id="procCountMIB"/> -->
 <function id="osInfoMIB"/>
 <function id="lastLoginsMIB"/>
-<function id="vmstatMIB"/>
-<function id="ip_conntrackMIB"/>
+<!-- <function id="vmstatMIB"/>
+<function id="ip_conntrackMIB"/> -->
+<function id="k8sMIB"/>
 <!--
 <function id="asvMib">
   <args cmd="curl &#x002d;-connect-timeout 1 -s {}:10181/status | awk '/^[0-9 ]*$/ {print $3}'" hosts="host{1,3,4,5}" />

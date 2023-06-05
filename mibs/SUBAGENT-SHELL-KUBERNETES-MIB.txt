@@ -1,0 +1,120 @@
+SUBAGENT-SHELL-KUBERNETES-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+  MODULE-IDENTITY, enterprises, Counter64, Gauge32 FROM SNMPv2-SMI
+  TimeStamp FROM SNMPv2-TC
+  functionsEntry FROM SUBAGENT-SHELL-MIB;
+
+SUBAGENT-SHELL-KUBERNETES MODULE-IDENTITY
+  LAST-UPDATED "202106051500Z"
+  ORGANIZATION "Noname, Inc."
+  CONTACT-INFO "adam@dunstanassoc.com"
+  DESCRIPTION "SNMP SUBAGENT SHELL Kubernetes status   MIB"
+  ::= { functionsEntry 22 }
+
+  k8sNodesTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF k8sNodesEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of k8s nodes"
+    ::= { SUBAGENT-SHELL-KUBERNETES 1 }
+
+  k8sNodesEntry OBJECT-TYPE
+    SYNTAX      k8sNodesEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "An entry containing information about k8s nodes"
+    INDEX      { k8sNodesIndex }
+    ::= { k8sNodesTable 1 }
+
+  k8sNodesEntryEntry ::=
+    SEQUENCE {
+        k8sNodesIndex         Integer32,
+        k8sNodesInfo           OCTET STRING
+    }
+
+  k8sNodesIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each nodes"
+    ::= { k8sNodesEntry 1 }
+
+  k8sNodesInfo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "k8s Node Info"
+    ::= { k8sNodesEntry 2 }
+
+  k8sNodeConditionsTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF k8sNodeConditionsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of node conditions"
+    ::= { SUBAGENT-SHELL-KUBERNETES 2 }
+
+  k8sNodeConditionsEntry OBJECT-TYPE
+    SYNTAX      k8sNodeConditionsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "An entry containing node condition"
+    INDEX      { k8sNodeConditionIndex }
+    ::= { k8sNodeConditionsTable 1 }
+
+  k8sNodeConditionsEntry ::=
+    SEQUENCE {
+        k8sNodeConditionsIndex         Integer32,
+        k8sNodeConditionsInfo           OCTET STRING
+    }
+
+  k8sNodeConditionsIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each nodes"
+    ::= { k8sNodeConditionsEntry 1 }
+
+  k8sNodeConditionsInfo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "k8s Node Condition Info"
+    ::= { k8sNodeConditionsEntry 2 }
+
+  k8sPodsTable  OBJECT-TYPE
+    SYNTAX      SEQUENCE OF k8sPodsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "A list of k8s pods"
+    ::= { SUBAGENT-SHELL-KUBERNETES 3 }
+
+  k8sPodsEntry OBJECT-TYPE
+    SYNTAX      k8sPodsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION  "An entry containing information about k8s pods"
+    INDEX      { k8sPodsIndex }
+    ::= { k8sPodsTable 1 }
+
+  k8sPodsEntryEntry ::=
+    SEQUENCE {
+        k8sPodsIndex         Integer32,
+        k8sPodsInfo           OCTET STRING
+    }
+
+  k8sPodsIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "A unique value, greater than zero, for each nodes"
+    ::= { k8sPodsEntry 1 }
+
+  k8sPodsInfo  OBJECT-TYPE
+    SYNTAX      OCTET STRING
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION "k8s Pod Info"
+    ::= { k8sPodsEntry 2 }
+  
+END
