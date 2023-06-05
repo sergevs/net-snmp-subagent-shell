@@ -2,9 +2,11 @@
 use strict;
 use warnings;
 use Sys::Syslog qw(:standard :macros);
+use Sys::Hostname;
 use Time::HiRes qw(time);
 use IO::Socket;
 use constant HAVE_SOCKET_INET6 => eval { require IO::Socket::INET6 };
+use JSON;
 
 our $config;
 
@@ -454,6 +456,49 @@ sub lastLoginsMIB {
   }
   $r = $r || ($? >> 8);
   return $r;
+}
+
+sub k8sMIB {
+  my $o=shift;
+  my $i=1;
+  my $r;
+  my $t=gettimeofday();
+  my $hostname = hostname;
+
+  foreach  (`kubectl get nodes --no-headers `) {
+    chomp;
+    $$o{"k8sNodesInfo.$i"} = $_;
+    $i++;
+  }
+
+  $r = $? >> 8;
+
+  $i=1;  
+  my $nodeconditioncmd = `kubectl get nodes $hostname -o jsonpath='{.status.conditions}'`;
+  my $nodeconditions = decode_json($nodeconditioncmd);
+
+  foreach my $key ( @{ $nodeconditions}) {
+
+    my $nodecondition = $key->{type}. " ". $key->{status}. " ". $key->{lastHeartbeatTime}. " ". $key->{lastTransitionTime}.
+     " ". $key->{reason}." ". $key->{message};
+    $$o{"k8sNodeConditionsInfo.$i"} = $nodecondition;
+    $i++
+  }
+
+  $r = $r || ($? >> 8);
+
+
+
+  $i=1;
+  foreach  (`kubectl get pods --all-namespaces --no-headers `) {
+    chomp;
+    $$o{"k8sPodsInfo.$i"} = $_;
+    $i++;
+  }
+
+  $r = $r || ($? >> 8);
+  return $r;
+  
 }
 
 sub execCommandMIB {
